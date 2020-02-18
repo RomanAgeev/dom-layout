@@ -1,7 +1,8 @@
 import { LayoutDirection, LayoutGroup } from "./layout";
 import { LayoutRenderer } from "./layoutRenderer";
+import { ready } from "./domUtils";
 
-window.onload = function() {
+ready(() => {
     const container = document.querySelector("#container") as HTMLElement;
 
     const root = new LayoutGroup(null, LayoutDirection.Horizontal);
@@ -24,4 +25,4 @@ window.onload = function() {
     group3.addLeaf("lightblue");
 
     new LayoutRenderer(root).render(container);
-};
+});
