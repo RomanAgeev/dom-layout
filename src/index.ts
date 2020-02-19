@@ -3,7 +3,9 @@ import { LayoutRenderer } from "./layoutRenderer";
 import { ready } from "./domUtils";
 
 ready(() => {
-    const container = document.querySelector("#container") as HTMLElement;
+    const container = document.getElementById("container")!;
+    const container2 = document.getElementById("container2")!;
+
 
     const root = new LayoutGroup(null, LayoutDirection.Horizontal);
 
@@ -25,4 +27,5 @@ ready(() => {
     group3.addLeaf("lightblue");
 
     new LayoutRenderer(root).render(container);
+    new LayoutRenderer(root).render(container2);
 });
