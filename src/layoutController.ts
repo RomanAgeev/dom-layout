@@ -1,7 +1,7 @@
-import { LayoutItem, LayoutLeaf, isLayoutLeaf, LayoutGroup } from "./layout";
-import { isHTMLElement } from "./domUtils";
 import { LayoutRenderer } from "./layoutRenderer";
 import { LayoutContext } from "./layoutContext";
+import { DragContext } from "./dragContext";
+import { placeElementPixel } from "./layoutUtils";
 
 export class LayoutController {
     constructor(
@@ -24,13 +24,7 @@ export class LayoutController {
         document.addEventListener("mouseup", this._mouseUp);
     }
 
-    private _dragItem?: LayoutItem;
-    private _dragItemTarget?: LayoutItem;
-    private _dragElement?: HTMLElement;
-    private _dragElementTarget?: HTMLElement;
-    private _dragItemIndex = -1;
-    private _shiftX = -1;
-    private _shiftY = -1;
+    private _dragContext?: DragContext;
 
     private _itemOver(e: Event): void {
         (e.target as HTMLElement).style.border = "2px solid black"
@@ -63,77 +57,72 @@ export class LayoutController {
             return;
         }
 
-        this._dragItem = item;
-        this._dragItemTarget = itemTarget;
-
-        const element = document.getElementById(this._context.itemToId(this._dragItem)!)!;
-
+        const element = document.getElementById(this._context.itemToId(item)!)!;
         const rect = element.getBoundingClientRect();
 
-        this._shiftX = e.clientX - rect.left;
-        this._shiftY = e.clientY - rect.top;
+        this._dragContext = new DragContext(
+            item,
+            itemTarget,
+            e.clientX - rect.left,
+            e.clientY - rect.top,
+            rect.width,
+            rect.height);
     }
 
     private _mouseMove(e: MouseEvent): void {
-        if (!this._dragItem || !this._dragItemTarget) {
+        if (!this._dragContext) {
             return;
         }
 
-        if (!this._dragElement && !this._dragElementTarget) {
-            const element = document.getElementById(this._context.itemToId(this._dragItem)!);
-            const elementTarget = document.getElementById(this._context.itemToId(this._dragItemTarget)!);
+        if (!this._dragContext.isDragging) {
+            const item = this._dragContext.item;
+            const itemTarget = this._dragContext.itemTarget;
+
+            const element = document.getElementById(this._context.itemToId(item)!);
+            const elementTarget = document.getElementById(this._context.itemToId(itemTarget)!);
             if (!element || !elementTarget) {
-                this._dragItem = undefined;
-                this._dragElementTarget = undefined;
+                this._dragContext = undefined;
                 return;
             }
 
             elementTarget.style.border = "";
-
-            const rect = element.getBoundingClientRect();
-
-            document.body.append(element);
-            element.style.width = rect.width + "px";
-            element.style.height = rect.height + "px";
             element.style.opacity = "0.7";
 
-            const parentItem = this._dragItem.parent!;
+            document.body.append(element);
+
+            const parentItem = item.parent!;
             const parentElement = document.getElementById(this._context.itemToId(parentItem)!)!;
-            this._dragItemIndex = parentItem.removeItem(this._dragItem);
+            const itemIndex = parentItem.removeItem(item);
 
             this._renderer.reRenderGroup(parentItem, parentElement, this._context);
 
-            this._dragElement = element;
-            this._dragElementTarget = elementTarget;
+            this._dragContext.startDrag(element, elementTarget, itemIndex);
         }
 
-        this._dragElement!.style.left = e.pageX - this._shiftX + "px";
-        this._dragElement!.style.top = e.pageY - this._shiftY + "px";
+        placeElementPixel(this._dragContext.element!, this._dragContext.getRect(e.pageX, e.pageY));
     }
 
     private _mouseUp(e: MouseEvent): void {
-        if (!this._dragItem) {
+        if (!this._dragContext) {
             return;
         }
 
-        if(!this._dragElement) {
-            this._dragItem = undefined;
-            this._dragItemTarget = undefined;
+        if (!this._dragContext.isDragging) {
+            this._dragContext = undefined;
             return;
         }
 
-        this._dragElementTarget!.style.opacity = "";
+        this._dragContext.elementTarget!.style.opacity = "";
 
-        const parentItem = this._dragItem.parent!;
+        const item = this._dragContext.item;
+        const itemIndex = this._dragContext.itemIndex!;
+
+        const parentItem = item.parent!;
         const parentElement = document.getElementById(this._context.itemToId(parentItem)!)!;
-        parentItem.insertItem(this._dragItem, this._dragItemIndex);
+        parentItem.insertItem(item, itemIndex);
 
         this._renderer.reRenderGroup(parentItem, parentElement, this._context);
 
-        this._dragItem = undefined;
-        this._dragItemTarget = undefined;
-        this._dragElement = undefined;
-        this._dragElementTarget = undefined;
-        this._dragItemIndex = -1;
-}
+        this._dragContext = undefined;
+    }
 }

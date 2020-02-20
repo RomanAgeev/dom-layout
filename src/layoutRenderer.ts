@@ -2,7 +2,7 @@ import { LayoutItem, isLayoutLeaf, isLayoutGroup, LayoutGroup, LayoutDirection, 
 import { idGenerator, identity, constant } from "./utils";
 import { LayoutController } from "./layoutController";
 import { LayoutArranger } from "./layoutArranger";
-import { placeElement } from "./layoutUtils";
+import { placeElementPercent } from "./layoutUtils";
 import { LayoutContext } from "./layoutContext";
 
 const idGen = idGenerator("ra-layout");
@@ -32,14 +32,14 @@ export class LayoutRenderer {
         for (const [item, rect] of rects) {
             const itemElement = document.getElementById(context.itemToId(item)!)!;
             element.append(itemElement);
-            placeElement(itemElement, rect);
+            placeElementPercent(itemElement, rect);
         }
     }
 
     private _createRootElement(container: HTMLElement): HTMLElement {
         const element = document.createElement("div");
         element.id = idGen();
-        placeElement(element, { left: 0, top: 0, width: 100, height: 100 });
+        placeElementPercent(element, { left: 0, top: 0, width: 100, height: 100 });
         container.append(element);
         return element;
     }
@@ -70,7 +70,7 @@ export class LayoutRenderer {
         for (const [item, rect] of rects) {
             const itemElement = document.createElement("div");
             itemElement.id = idGen();
-            placeElement(itemElement, rect);
+            placeElementPercent(itemElement, rect);
             element.append(itemElement);
             this._renderItem(item, itemElement, context);
         }
