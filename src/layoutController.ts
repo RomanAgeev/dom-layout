@@ -1,41 +1,39 @@
-import { LayoutItem, LayoutLeaf } from "./layout";
+import { LayoutItem, LayoutLeaf, isLayoutLeaf, LayoutGroup } from "./layout";
 import { isHTMLElement } from "./domUtils";
 import { LayoutRenderer } from "./layoutRenderer";
+import { LayoutContext } from "./layoutContext";
 
 export class LayoutController {
     constructor(
-        readonly container: HTMLElement,
+        private readonly _context: LayoutContext,
         private readonly _renderer: LayoutRenderer) {
 
         this._itemOver = this._itemOver.bind(this);
         this._itemOut = this._itemOut.bind(this);
-        this._itemClick = this._itemClick.bind(this);
-        this._itemDragStart = this._itemDragStart.bind(this);
-        this._itemDragOver = this._itemDragOver.bind(this);
-        this._itemDrop = this._itemDrop.bind(this);
+        this._mouseDown = this._mouseDown.bind(this);
+        this._mouseMove = this._mouseMove.bind(this);
+        this._mouseUp = this._mouseUp.bind(this);
 
-        this.container.addEventListener("mouseover", this._itemOver);
-        this.container.addEventListener("mouseout", this._itemOut);
-        this.container.addEventListener("dragstart", this._itemDragStart);
-        this.container.addEventListener("dragover", this._itemDragOver);
-        this.container.addEventListener("drop", this._itemDrop);
-        this.container.addEventListener("click", this._itemClick);
+        const rootElement = document.getElementById(this._context.rootId)!;
+
+        rootElement.addEventListener("mouseover", this._itemOver);
+        rootElement.addEventListener("mouseout", this._itemOut);
+        rootElement.addEventListener("dragstart", (e: DragEvent) => e.preventDefault());
+        rootElement.addEventListener("mousedown", this._mouseDown);
+        document.addEventListener("mousemove", this._mouseMove);
+        document.addEventListener("mouseup", this._mouseUp);
     }
 
-    private readonly _domToLayout = new Map<string, LayoutItem>();
-    private readonly _layoutToDom = new Map<LayoutItem, string>();    
-
-    registerElement(element: HTMLElement, item: LayoutItem): void {
-        this._domToLayout.set(element.id, item);
-        this._layoutToDom.set(item, element.id);
-    }
-
-    getElementId(item: LayoutItem): string | undefined {
-        return this._layoutToDom.get(item);
-    }
+    private _dragItem?: LayoutItem;
+    private _dragItemTarget?: LayoutItem;
+    private _dragElement?: HTMLElement;
+    private _dragElementTarget?: HTMLElement;
+    private _dragItemIndex = -1;
+    private _shiftX = -1;
+    private _shiftY = -1;
 
     private _itemOver(e: Event): void {
-        (e.target as HTMLElement).style.border = "5px solid black"
+        (e.target as HTMLElement).style.border = "2px solid black"
         e.preventDefault();
     }
 
@@ -44,71 +42,98 @@ export class LayoutController {
         e.preventDefault();
     }
 
-    private _itemDragStart(e: DragEvent): void {
-        if (!e.dataTransfer) {
+    private _mouseDown(e: MouseEvent): void {
+        if (!e.target) {
             return;
         }
 
-        if (!isHTMLElement(e.target)) {
+        const elementTarget = e.target as HTMLElement;
+
+        const itemTarget = this._context.idToItem(elementTarget.id);
+        if (!itemTarget) {
             return;
         }
 
-        const id = e.target.id;
-        if (!this._domToLayout.has(id)) {
+        let item = itemTarget;
+        while (item.parent && item.parent.count < 2) {
+            item = item.parent;
+        }
+
+        if (item.parent === null) {
             return;
         }
 
-        e.dataTransfer.setData("text/plain", id);
-        e.dataTransfer.effectAllowed = "move";
+        this._dragItem = item;
+        this._dragItemTarget = itemTarget;
 
-        this._renderer.hideItem(this._domToLayout.get(id)!, this);
+        const element = document.getElementById(this._context.itemToId(this._dragItem)!)!;
+
+        const rect = element.getBoundingClientRect();
+
+        this._shiftX = e.clientX - rect.left;
+        this._shiftY = e.clientY - rect.top;
     }
 
-    private _itemDragOver(e: DragEvent): void {
-        if (!e.dataTransfer) {
+    private _mouseMove(e: MouseEvent): void {
+        if (!this._dragItem || !this._dragItemTarget) {
             return;
         }
 
-        if (e.dataTransfer.effectAllowed !== "move") {
-            return;
+        if (!this._dragElement && !this._dragElementTarget) {
+            const element = document.getElementById(this._context.itemToId(this._dragItem)!);
+            const elementTarget = document.getElementById(this._context.itemToId(this._dragItemTarget)!);
+            if (!element || !elementTarget) {
+                this._dragItem = undefined;
+                this._dragElementTarget = undefined;
+                return;
+            }
+
+            elementTarget.style.border = "";
+
+            const rect = element.getBoundingClientRect();
+
+            document.body.append(element);
+            element.style.width = rect.width + "px";
+            element.style.height = rect.height + "px";
+            element.style.opacity = "0.7";
+
+            const parentItem = this._dragItem.parent!;
+            const parentElement = document.getElementById(this._context.itemToId(parentItem)!)!;
+            this._dragItemIndex = parentItem.removeItem(this._dragItem);
+
+            this._renderer.reRenderGroup(parentItem, parentElement, this._context);
+
+            this._dragElement = element;
+            this._dragElementTarget = elementTarget;
         }
 
-        if (!isHTMLElement(e.target)) {
-            return;
-        }
-
-        const id = e.target.id;
-        if (!this._domToLayout.has(id)) {
-            return;
-        }
-
-        if (e.dataTransfer.types[0] !== "text/plain") {
-            return;
-        }
-
-        e.dataTransfer.dropEffect = "move";
-
-        e.preventDefault();
+        this._dragElement!.style.left = e.pageX - this._shiftX + "px";
+        this._dragElement!.style.top = e.pageY - this._shiftY + "px";
     }
 
-    private _itemDrop(e: DragEvent): void {
-        if (!e.dataTransfer) {
-            return;
-        }
-        
-        const target = e.target as HTMLElement;
-
-        alert("Drop " + e.dataTransfer.getData("text/plain") + " onto " + target.id);
-
-        e.preventDefault();
-    }
-
-    private _itemClick(e: Event): void {
-        const item = this._domToLayout.get((e.target as HTMLElement).id) as LayoutLeaf;
-        if (!item) {
+    private _mouseUp(e: MouseEvent): void {
+        if (!this._dragItem) {
             return;
         }
 
-        console.log(item.payload);
-    }
+        if(!this._dragElement) {
+            this._dragItem = undefined;
+            this._dragItemTarget = undefined;
+            return;
+        }
+
+        this._dragElementTarget!.style.opacity = "";
+
+        const parentItem = this._dragItem.parent!;
+        const parentElement = document.getElementById(this._context.itemToId(parentItem)!)!;
+        parentItem.insertItem(this._dragItem, this._dragItemIndex);
+
+        this._renderer.reRenderGroup(parentItem, parentElement, this._context);
+
+        this._dragItem = undefined;
+        this._dragItemTarget = undefined;
+        this._dragElement = undefined;
+        this._dragElementTarget = undefined;
+        this._dragItemIndex = -1;
+}
 }

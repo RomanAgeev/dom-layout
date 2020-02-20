@@ -9,28 +9,20 @@ export class LayoutArranger {
         private readonly _getHeight: (x: number) => number) {
     }    
 
-    arrangeGroup(group: LayoutGroup, itemPredicate: (item: LayoutItem) => boolean): Map<LayoutItem, LayoutItemRect> {
+    arrangeGroup(group: LayoutGroup): Map<LayoutItem, LayoutItemRect> {
         const rects = new Map<LayoutItem, LayoutItemRect>();
 
-        let sum = 0;
-        let count = 0;
-        for (const [item, weight] of group) {
-            if (itemPredicate(item)) {
-                sum += weight;
-                count++;
-            }
-        }
-
-        if (count === 0) {
+        if (group.count === 0) {
             return rects;
         }
-        
+
+        let sum = 0;
+        for (const [_item, weight] of group) {
+            sum += weight;
+        }
+       
         let start = 0;
         for (const [item, weight] of group) {
-            if (!itemPredicate(item)) {
-                continue;
-            }
-
             const size = weight / sum * 100;
 
             rects.set(item, {

@@ -7,8 +7,6 @@ export abstract class LayoutItem {
     protected constructor(
         readonly parent: LayoutGroup | null) {
     }
-
-    visible = true;
 }
 
 export class LayoutEmpty extends LayoutItem {
@@ -62,6 +60,20 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         const group = new LayoutGroup(this, direction);
         this._addItem(group, weight);
         return group;
+    }
+
+    removeItem(item: LayoutItem): number {
+        for (let i = 0; i < this.count; i++) {
+            if (this._items[i] === item) {
+                this._items.splice(i, 1);
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    insertItem(item: LayoutItem, index: number): void {
+        this._items.splice(index, 0, item);
     }
 
     [Symbol.iterator](): Iterator<[LayoutItem, number]> {
