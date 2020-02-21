@@ -61,6 +61,7 @@ export class LayoutController {
         this._dragContext = new DragContext(
             item,
             itemTarget,
+            item.parent,
             item.parent.getItemWeight(item)!,
             e.clientX - rect.left,
             e.clientY - rect.top,
@@ -207,7 +208,7 @@ export class LayoutController {
             dropIndicator.style.display = "none";
         }
 
-        this._dragContext.elementTarget!.style.opacity = "";
+        this._dragContext.element!.style.opacity = "";
 
         const item = this._dragContext.item;
 
@@ -218,7 +219,7 @@ export class LayoutController {
             }
         } else {
             const itemIndex = this._dragContext.itemIndex!;
-            item.parent!.insertItem(item, itemIndex, this._dragContext.itemWeight);
+            this._dragContext.itemParent.insertItem(item, itemIndex, this._dragContext.itemWeight);
         }
 
         this._dragContext = undefined;

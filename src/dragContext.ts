@@ -1,10 +1,11 @@
-import { LayoutItem, LayoutSide } from "./layout";
+import { LayoutItem, LayoutSide, LayoutGroup } from "./layout";
 import { LayoutItemRect } from "./layoutUtils";
 
 export class DragContext {
     constructor(
         readonly item: LayoutItem,
         readonly itemTarget: LayoutItem,
+        readonly itemParent: LayoutGroup,
         readonly itemWeight: number,
         readonly shiftX: number,
         readonly shiftY: number,

@@ -89,16 +89,6 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         for (let i = 0; i < this.count; i++) {
             if (this._items[i] === item) {
                 this._items.splice(i, 1);
-
-                const itemWeight = this._weights.get(item)!;
-                if (i > 0) {
-                    const weightBefore = this._weights.get(this._items[i - 1])!;
-                    this._weights.set(this._items[i - 1], weightBefore + itemWeight);
-                } else if (i < this.count) {
-                    const weightAfter = this._weights.get(this._items[i + 1])!;
-                    this._weights.set(this._items[i + 1], weightAfter + itemWeight);
-                }
-
                 this._weights.delete(item);
                 item.parent = null
                 this._raiseChanged();
@@ -106,6 +96,19 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
             }
         }
         return -1;
+    }
+
+    private _replaceItem(item: LayoutItem, newItem: LayoutItem): void {
+        for (let i = 0; i < this.count; i++) {
+            if (this._items[i] === item) {
+                this._items.splice(i, 1, newItem);
+                const itemWeight = this._weights.get(item)!;
+                this._weights.delete(item);
+                this._weights.set(newItem, itemWeight);
+                item.parent = null;
+                newItem.parent = this;
+            }
+        }
     }
 
     insertItem(item: LayoutItem, index: number, weight: number): void {
@@ -136,13 +139,14 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
             return;
         }
 
-        this.removeItem(child);
-
         const group = new LayoutGroup(this, oppositeDirection(this.direction));
-        group.insertItem(child, 0, childWeight);
+        
+        this._replaceItem(child, group);
+
+        group.insertItem(child, 0, 1);
         group.insertNearChild(child, item, side);
 
-        this.insertItem(group, index, childWeight);
+        this._raiseChanged();
     }
 
     subscribeChanged(handler: LayoutGroupChanged): void {
