@@ -1,10 +1,11 @@
-import { LayoutItem } from "./layout";
+import { LayoutItem, LayoutSide } from "./layout";
 import { LayoutItemRect } from "./layoutUtils";
 
 export class DragContext {
     constructor(
         readonly item: LayoutItem,
         readonly itemTarget: LayoutItem,
+        readonly itemWeight: number,
         readonly shiftX: number,
         readonly shiftY: number,
         readonly width: number,
@@ -14,6 +15,8 @@ export class DragContext {
     private _element?: HTMLElement;
     private _elementTarget?: HTMLElement;
     private _itemIndex?: number;
+    private _dropElement?: HTMLElement;
+    private _dropEdge?: LayoutSide;
 
     get element(): HTMLElement | undefined {
         return this._element;
@@ -26,6 +29,15 @@ export class DragContext {
     }
     get isDragging(): boolean {
         return !!this._element && !!this._elementTarget;
+    }
+    get dropElement(): HTMLElement {
+        return this._dropElement!;
+    }
+    get dropEdge(): LayoutSide {
+        return this._dropEdge!;
+    }
+    get hasDropTarget(): boolean {
+        return !!this._dropElement && this._dropEdge != null;
     }
 
     startDrag(element: HTMLElement, elementTarget: HTMLElement, itemIndex: number): void {
@@ -41,5 +53,15 @@ export class DragContext {
             width: this.width,
             height: this.height
         };
+    }
+
+    setDropTarget(dropElement: HTMLElement, dropEdge: LayoutSide): void {
+        this._dropElement = dropElement;
+        this._dropEdge = dropEdge;
+    }
+
+    clearDropTarget(): void {
+        this._dropElement = undefined;
+        this._dropEdge = undefined;
     }
 }

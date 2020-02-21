@@ -10,30 +10,68 @@ const idGen = idGenerator("ra-layout");
 export class LayoutRenderer {
     constructor(
         readonly root: LayoutItem) {
+
+        this._layoutGroupChanged = this._layoutGroupChanged.bind(this);
     }
     
     private readonly _horizontalArranger = new LayoutArranger(identity, constant(0), identity, constant(100));
     private readonly _verticalArranger = new LayoutArranger(constant(0), identity, constant(100), identity);
+
+    private _context?: LayoutContext;
     
     render(container: HTMLElement): LayoutController {
         const rootElement = this._createRootElement(container);
 
-        const context = new LayoutContext(rootElement.id);
+        this._context = new LayoutContext(rootElement.id);
 
-        this._renderItem(this.root, rootElement, context);
+        this._renderItem(this.root, rootElement, this._context);
 
-        return new LayoutController(context, this);
+        return new LayoutController(this._context);
     }
 
-    reRenderGroup(group: LayoutGroup, element: HTMLElement, context: LayoutContext): void {
+    private _reRenderGroup(group: LayoutGroup, element: HTMLElement, context: LayoutContext): void {        
         const arranger: LayoutArranger = this._getLayoutArranger(group);
 
         const rects = arranger.arrangeGroup(group);
         for (const [item, rect] of rects) {
-            const itemElement = document.getElementById(context.itemToId(item)!)!;
+            let itemId = context.itemToId(item);
+            if (!itemId) {
+                itemId = idGen();
+                context.register(itemId, item);
+            }
+
+            let itemElement = document.getElementById(itemId);
+            if (!itemElement) {
+                itemElement = document.createElement("div");
+                itemElement.id = itemId;
+
+                if (isLayoutGroup(item)) {
+                    item.subscribeChanged(this._layoutGroupChanged);
+                }
+
+            }
+
             element.append(itemElement);
             placeElementPercent(itemElement, rect);
+            this._reRenderItem(item, itemElement, context);
         }
+    }
+
+    private _reRenderItem(item: LayoutItem, element: HTMLElement, context: LayoutContext): void {
+        if (isLayoutLeaf(item)) {
+            this._renderLeaf(item, element, context);
+            return;
+        }
+
+        if (isLayoutGroup(item)) {
+            this._reRenderGroup(item, element, context);
+            return;
+        }
+    }
+
+    private _layoutGroupChanged(group: LayoutGroup): void {
+        const groupElement = document.getElementById(this._context!.itemToId(group)!)!;
+        this._reRenderGroup(group, groupElement, this._context!);
     }
 
     private _createRootElement(container: HTMLElement): HTMLElement {
@@ -63,6 +101,8 @@ export class LayoutRenderer {
     }
 
     private _renderGroup(group: LayoutGroup, element: HTMLElement, context: LayoutContext): void {
+        group.subscribeChanged(this._layoutGroupChanged);
+
         const arranger: LayoutArranger = this._getLayoutArranger(group);
 
         const rects = arranger.arrangeGroup(group);
