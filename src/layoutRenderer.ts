@@ -46,7 +46,7 @@ export class LayoutRenderer {
                 itemElement.id = itemId;
 
                 if (isLayoutGroup(item)) {
-                    item.subscribeChanged(this._layoutGroupChanged);
+                    item.events.addListener(LayoutGroup.EventChanged, this._layoutGroupChanged);
                 }
 
             }
@@ -101,7 +101,7 @@ export class LayoutRenderer {
     }
 
     private _renderGroup(group: LayoutGroup, element: HTMLElement, context: LayoutContext): void {
-        group.subscribeChanged(this._layoutGroupChanged);
+        group.events.addListener(LayoutGroup.EventChanged, this._layoutGroupChanged);
 
         const arranger: LayoutArranger = this._getLayoutArranger(group);
 

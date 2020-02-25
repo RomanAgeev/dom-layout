@@ -34,15 +34,15 @@ export class LayoutLeaf extends LayoutItem {
     }
 
     insertSide(item: LayoutItem, side: LayoutSide): void {
-        if (this.parent) {
-            this.parent.insertNearChild(this, item, side);
-        }
+        this.parent!.insertNearChild(this, item, side);
     }
 }
 
 export type LayoutGroupChanged = (group: LayoutGroup) => void;
 
 export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, number]> {
+    static readonly EventChanged = "CHANGED";
+
     constructor(
         parent: LayoutGroup | null,
         readonly direction: LayoutDirection) {
@@ -50,111 +50,121 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         super(parent);
     }
 
-    private static readonly ChangedEvent = "changed";
-
     private readonly _items: LayoutItem[] = [];
     private readonly _weights = new Map<LayoutItem, number>();
-    private readonly _events = new EventEmitter();
+
+    readonly events = new EventEmitter();
 
     get count(): number {
         return this._items.length;
     }
 
-    item(index: number): LayoutItem | undefined {
+    item(index: number): LayoutItem {
         if (index < 0 || index >= this._items.length) {
-            return undefined;
+            throw new Error("index out of range");
         }
         return this._items[index];
     }
 
-    weight(item: LayoutItem): number | undefined {
-        return this._weights.get(item);
+    weight(item: LayoutItem): number {
+        if (!this._weights.has(item)) {
+            throw new Error("item doesn't exist in the group");
+        }
+        return this._weights.get(item)!;
     }
     
     addLeaf(payload: unknown, weight: number = 1): LayoutLeaf {
         const leaf = new LayoutLeaf(this, payload);
-        this._addItem(leaf, weight);
+        this._insertIndex(this.count, leaf, weight);
         this._raiseChanged();
         return leaf;
     }
 
     addGroup(direction: LayoutDirection, weight: number = 1): LayoutGroup {
         const group = new LayoutGroup(this, direction);
-        this._addItem(group, weight);
+        this._insertIndex(this.count, group, weight);
         this._raiseChanged();
         return group;
     }
 
-    removeItem(item: LayoutItem): number {
-        for (let i = 0; i < this.count; i++) {
-            if (this._items[i] === item) {
-                this._items.splice(i, 1);
-                this._weights.delete(item);
-                item.parent = null
-                this._raiseChanged();
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private _replaceItem(item: LayoutItem, newItem: LayoutItem): void {
-        for (let i = 0; i < this.count; i++) {
-            if (this._items[i] === item) {
-                this._items.splice(i, 1, newItem);
-                const itemWeight = this._weights.get(item)!;
-                this._weights.delete(item);
-                this._weights.set(newItem, itemWeight);
-                item.parent = null;
-                newItem.parent = this;
-            }
-        }
-    }
-
     insertItem(item: LayoutItem, index: number, weight: number): void {
-        this._items.splice(index, 0, item);
-        this._weights.set(item, weight);
-        item.parent = this;
+        this._insertIndex(index, item, weight);
         this._raiseChanged();
     }
 
     insertNearChild(child: LayoutItem, item: LayoutItem, side: LayoutSide): void {
         const index = this._getItemIndex(child);
         if (index < 0) {
-            return;
+            throw new Error("child doesn't exist in the group");
         }
 
-        const childWeight = this._weights.get(child)!;
-        const halfWeight = childWeight / 2;
+        const weight = this.weight(child);
+        const halfWeight = weight / 2;
 
         if (isItemAppend(side, this.direction)) {
+            this._weights.set(child, halfWeight);
+            this._insertIndex(index + 1, item, halfWeight);
+
+        } else if (isItemPrepend(side, this.direction)) {
             this._weights.set(child, halfWeight)
-            this.insertItem(item, index + 1, halfWeight);
-            return;
+            this._insertIndex(index, item, halfWeight);
+
+        } else {
+            const oppositeDirection =
+                this.direction === LayoutDirection.Horizontal ?
+                LayoutDirection.Vertical :
+                LayoutDirection.Horizontal;
+
+            const group = new LayoutGroup(this, oppositeDirection);
+
+            this._removeIndex(index);
+            this._insertIndex(index, group, weight);
+
+            if (isItemAppend(side, oppositeDirection)) {
+                group._insertIndex(0, child, 1);
+                group._insertIndex(1, item, 1);
+            } else {
+                group._insertIndex(0, item, 1);
+                group._insertIndex(1, child, 1);
+            }
         }
-
-        if (isItemPrepend(side, this.direction)) {
-            this._weights.set(child, halfWeight)
-            this.insertItem(item, index, halfWeight);
-            return;
-        }
-
-        const group = new LayoutGroup(this, oppositeDirection(this.direction));
-        
-        this._replaceItem(child, group);
-
-        group.insertItem(child, 0, 1);
-        group.insertNearChild(child, item, side);
 
         this._raiseChanged();
     }
 
-    subscribeChanged(handler: LayoutGroupChanged): void {
-        this._events.addListener(LayoutGroup.ChangedEvent, handler);
+    removeItem(item: LayoutItem): number {
+        const index = this._getItemIndex(item);
+        if (index >= 0) {
+            this._removeIndex(index);
+            this._raiseChanged();
+        }
+        return index;
     }
 
-    getItemWeight(item: LayoutItem): number | undefined {
-        return this._weights.get(item);
+    private _insertIndex(index: number, item: LayoutItem, weight: number): void {
+        this._items.splice(index, 0, item);
+        this._weights.set(item, weight);
+        item.parent = this;
+    }
+
+    private _removeIndex(index: number): void {
+        const item: LayoutItem = this._items[index];
+        this._items.splice(index, 1);
+        this._weights.delete(item);
+        item.parent = null
+    }
+
+    private _getItemIndex(item: LayoutItem): number {
+        for (let i = 0; i < this._items.length; i++) {
+            if (this._items[i] === item) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private _raiseChanged(): void {
+        this.events.emit(LayoutGroup.EventChanged, this);
     }
 
     [Symbol.iterator](): Iterator<[LayoutItem, number]> {
@@ -178,24 +188,6 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
             }
         };
     }
-
-    private _getItemIndex(item: LayoutItem): number {
-        for (let i = 0; i < this._items.length; i++) {
-            if (this._items[i] === item) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private _addItem(item: LayoutItem, weight: number): void {
-        this._items.push(item);
-        this._weights.set(item, weight);
-    }
-
-    private _raiseChanged(): void {
-        this._events.emit(LayoutGroup.ChangedEvent, this);
-    }
 }
 
 export const isLayoutLeaf = (item: LayoutItem): item is LayoutLeaf => item instanceof LayoutLeaf;
@@ -208,8 +200,3 @@ const isItemPrepend = (side: LayoutSide, direction: LayoutDirection): boolean =>
 const isItemAppend = (side: LayoutSide, direction: LayoutDirection): boolean => 
     direction === LayoutDirection.Horizontal && side === LayoutSide.Right ||
     direction === LayoutDirection.Vertical && side === LayoutSide.Bottom;
-
-const oppositeDirection = (direction: LayoutDirection): LayoutDirection =>
-    direction === LayoutDirection.Horizontal ? LayoutDirection.Vertical : LayoutDirection.Horizontal;
-
-

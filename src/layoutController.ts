@@ -62,7 +62,7 @@ export class LayoutController {
             item,
             itemTarget,
             item.parent,
-            item.parent.getItemWeight(item)!,
+            item.parent.weight(item),
             e.clientX - rect.left,
             e.clientY - rect.top,
             rect.width,
