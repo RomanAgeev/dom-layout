@@ -124,8 +124,8 @@ export class LayoutController {
 
         this._dropContext.calcDropEdge(e.clientX, e.clientY);
 
-        const indicatorRect = this._dropContext.calcDropRect(window.pageXOffset, window.pageYOffset);
-        this._showDropIndicator(indicatorRect);
+        const dropRect = this._dropContext.calcDropRect(window.pageXOffset, window.pageYOffset);
+        this._showDropIndicator(dropRect);
     }
 
     private _mouseUp(e: MouseEvent): void {
