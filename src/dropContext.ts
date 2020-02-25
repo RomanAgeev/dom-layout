@@ -4,10 +4,10 @@ import { LayoutItemRect, placeElementPixel } from "./layoutUtils";
 export class DropContext {
     constructor(
         readonly dropElement: HTMLElement,
-        readonly left: number,
-        readonly top: number,
-        readonly width: number,
-        readonly height: number) {
+        private readonly _left: number,
+        private readonly _top: number,
+        private readonly _width: number,
+        private readonly _height: number) {
     }
 
     private _dropEdge?: LayoutSide;
@@ -17,13 +17,13 @@ export class DropContext {
     }
 
     calcDropEdge(x: number, y: number): void {
-        const shiftX = x - this.left;
-        const shiftY = y - this.top;
+        const shiftX = x - this._left;
+        const shiftY = y - this._top;
 
-        const k = this.height / this.width;
+        const k = this._height / this._width;
 
         const y1 = k * shiftX;
-        const y2 = -k * shiftX + this.height;
+        const y2 = -k * shiftX + this._height;
 
         const beforeY1 = shiftY < y1;
         const beforeY2 = shiftY < y2;
@@ -36,40 +36,40 @@ export class DropContext {
     }
 
     calcDropRect(xOffset: number, yOffset: number): LayoutItemRect {
-        const dropElementLeft = this.left + xOffset;
-        const dropElementTop = this.top + yOffset;
+        const dropElementLeft = this._left + xOffset;
+        const dropElementTop = this._top + yOffset;
 
         switch (this._dropEdge) {
             case LayoutSide.Top:
                 return {
                     left: dropElementLeft,
                     top: dropElementTop,
-                    width: this.width,
-                    height: this.height / 2,
+                    width: this._width,
+                    height: this._height / 2,
                 };
 
             case LayoutSide.Right:
                 return {
-                    left: dropElementLeft + (this.width / 2),
+                    left: dropElementLeft + (this._width / 2),
                     top: dropElementTop,
-                    width: this.width / 2,
-                    height: this.height,
+                    width: this._width / 2,
+                    height: this._height,
                 };
 
             case LayoutSide.Bottom:
                 return {
                     left: dropElementLeft,
-                    top: dropElementTop + (this.height / 2),
-                    width: this.width,
-                    height: this.height / 2,
+                    top: dropElementTop + (this._height / 2),
+                    width: this._width,
+                    height: this._height / 2,
                 };
 
             case LayoutSide.Left:
                 return {
                     left: dropElementLeft,
                     top: dropElementTop,
-                    width: this.width / 2,
-                    height: this.height,
+                    width: this._width / 2,
+                    height: this._height,
                 };
 
             default:

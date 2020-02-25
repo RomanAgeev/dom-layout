@@ -1,8 +1,11 @@
 import { LayoutContext } from "./layoutContext";
 import { DragContext } from "./dragContext";
 import { placeElementPixel, LayoutItemRect } from "./layoutUtils";
-import { LayoutSide, isLayoutLeaf } from "./layout";
+import { LayoutSide, isLayoutLeaf, LayoutItem, LayoutLeaf } from "./layout";
 import { DropContext } from "./dropContext";
+import { hideHTMLElement, showHTMLElement } from "./domUtils";
+
+const dropIndicatorId = "dropIndicator";
 
 export class LayoutController {
     constructor(
@@ -88,7 +91,12 @@ export class LayoutController {
             return;
         }
 
-        this._dragContext.dragBy(e.pageX, e.pageY);
+        if (!this._dragContext.isDragging) {
+            this._dragContext.beginDrag();
+        }
+
+        const dragRect = this._dragContext.calcDragRect(e.pageX, e.pageY);
+        placeElementPixel(this._dragContext.dragElement, dragRect);
 
         this._hideDropIndicator();
         
@@ -98,13 +106,13 @@ export class LayoutController {
             return;
         }
 
-        const dropElementRect = dropElement.getBoundingClientRect();
-        if (dropElementRect.width === 0 || dropElementRect.height === 0) {
-            this._dropContext = undefined;
-            return;
-        }
-
         if (!this._dropContext || this._dropContext.dropElement !== dropElement) {
+            const dropElementRect = dropElement.getBoundingClientRect();
+            if (dropElementRect.width === 0 || dropElementRect.height === 0) {
+                this._dropContext = undefined;
+                return;
+            }
+    
             this._dropContext = new DropContext(
                 dropElement,
                 dropElementRect.left,
@@ -125,21 +133,20 @@ export class LayoutController {
             return;
         }
 
-        const item = this._dragContext.item;
-
-        this._dragContext.outerElement.style.opacity = "";
-
         this._hideDropIndicator();
 
+        let dropLeaf: LayoutLeaf | undefined = undefined;
         if (this._dropContext) {
-            const dropItem = this._context.idToItem(this._dropContext.dropElement.id)!;
-            if (isLayoutLeaf(dropItem)) {
-                dropItem.insertSide(item, this._dropContext.dropEdge);
+            const dropItem = this._context.idToItem(this._dropContext.dropElement.id);
+            if (dropItem && isLayoutLeaf(dropItem)) {
+                dropLeaf = dropItem;
             }
+        }
 
+        if (dropLeaf) {
+            this._dragContext.endDrag(dropLeaf, this._dropContext!.dropEdge);
         } else {
-            const itemIndex = this._dragContext.index;
-            this._dragContext.group.insertItem(item, itemIndex, this._dragContext.weight);
+            this._dragContext.cancelDrag();
         }
 
         this._dragContext = undefined;
@@ -147,7 +154,11 @@ export class LayoutController {
     }
 
     private _getDropElement(x: number, y: number): HTMLElement | null {
-        this._dragContext!.hideDragElement();
+        if (!this._dragContext) {
+            throw new Error("dragContext doesn't exist");
+        }
+
+        hideHTMLElement(this._dragContext.dragElement);
         try {
             let dropElement = document.elementFromPoint(x, y);
             if (!dropElement) {
@@ -159,26 +170,25 @@ export class LayoutController {
             return dropElement as HTMLElement;
         }
         finally {
-            this._dragContext!.showDragElement();
+            showHTMLElement(this._dragContext.dragElement);
         }
     }
 
     private _hideDropIndicator(): void {
-        const dropIndicator = document.getElementById("dropIndicator");
+        const dropIndicator = document.getElementById(dropIndicatorId);
         if (dropIndicator) {
-            dropIndicator.style.display = "none";
+            hideHTMLElement(dropIndicator);
         }
     }
 
     private _showDropIndicator(indicatorRect: LayoutItemRect): void {
-        let dropIndicator = document.getElementById("dropIndicator");
+        let dropIndicator = document.getElementById(dropIndicatorId);
         if (!dropIndicator) {
             dropIndicator = document.createElement("div");
-            dropIndicator.id = "dropIndicator";
-            dropIndicator.style.border = "5px solid black"
+            dropIndicator.id = dropIndicatorId;
             document.body.append(dropIndicator);
         }
-        dropIndicator.style.display = "";
+        showHTMLElement(dropIndicator);
         placeElementPixel(dropIndicator, indicatorRect);
     }
 }
