@@ -66,6 +66,15 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         return this._items[index];
     }
 
+    index(item: LayoutItem): number {
+        for (let i = 0; i < this._items.length; i++) {
+            if (this._items[i] === item) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     weight(item: LayoutItem): number {
         if (!this._weights.has(item)) {
             throw new Error("item doesn't exist in the group");
@@ -93,7 +102,7 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
     }
 
     insertNearChild(child: LayoutItem, item: LayoutItem, side: LayoutSide): void {
-        const index = this._getItemIndex(child);
+        const index = this.index(child);
         if (index < 0) {
             throw new Error("child doesn't exist in the group");
         }
@@ -133,7 +142,7 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
     }
 
     removeItem(item: LayoutItem): number {
-        const index = this._getItemIndex(item);
+        const index = this.index(item);
         if (index >= 0) {
             this._removeIndex(index);
             this._raiseChanged();
@@ -152,15 +161,6 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         this._items.splice(index, 1);
         this._weights.delete(item);
         item.parent = null
-    }
-
-    private _getItemIndex(item: LayoutItem): number {
-        for (let i = 0; i < this._items.length; i++) {
-            if (this._items[i] === item) {
-                return i;
-            }
-        }
-        return -1;
     }
 
     private _raiseChanged(): void {

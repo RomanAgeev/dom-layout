@@ -1,7 +1,8 @@
 import { LayoutContext } from "./layoutContext";
 import { DragContext } from "./dragContext";
-import { placeElementPixel } from "./layoutUtils";
+import { placeElementPixel, LayoutItemRect } from "./layoutUtils";
 import { LayoutSide, isLayoutLeaf } from "./layout";
+import { DropContext } from "./dropContext";
 
 export class LayoutController {
     constructor(
@@ -23,6 +24,7 @@ export class LayoutController {
     }
 
     private _dragContext?: DragContext;
+    private _dropContext?: DropContext;
 
     private _itemOver(e: Event): void {
         (e.target as HTMLElement).style.border = "2px solid black"
@@ -39,34 +41,46 @@ export class LayoutController {
             return;
         }
 
-        const elementTarget = e.target as HTMLElement;
+        const innerElement = e.target as HTMLElement;
+        const innerId = innerElement.id;
 
-        const itemTarget = this._context.idToItem(elementTarget.id);
-        if (!itemTarget) {
+        const innerItem = this._context.idToItem(innerId);
+        if (!innerItem) {
             return;
         }
 
-        let item = itemTarget;
-        while (item.parent && item.parent.count < 2) {
-            item = item.parent;
+        let outerItem = innerItem;
+        while (outerItem.parent && outerItem.parent.count < 2) {
+            outerItem = outerItem.parent;
         }
-
-        if (item.parent === null) {
+        if (outerItem.parent === null) {
             return;
         }
 
-        const element = document.getElementById(this._context.itemToId(item)!)!;
-        const rect = element.getBoundingClientRect();
+        const outerId = this._context.itemToId(outerItem);
+        if (!outerId) {
+            return;
+        }
+
+        const outerElement = document.getElementById(outerId);
+        if (!outerElement) {
+            return;
+        }
+        
+        const rect = outerElement.getBoundingClientRect();
 
         this._dragContext = new DragContext(
-            item,
-            itemTarget,
-            item.parent,
-            item.parent.weight(item),
+            outerItem,
+            outerItem.parent,
+            outerItem.parent.weight(outerItem),
+            outerItem.parent.index(outerItem),
+            innerElement,
+            outerElement,
             e.clientX - rect.left,
             e.clientY - rect.top,
             rect.width,
-            rect.height);
+            rect.height
+        );
     }
 
     private _mouseMove(e: MouseEvent): void {
@@ -74,123 +88,36 @@ export class LayoutController {
             return;
         }
 
-        if (!this._dragContext.isDragging) {
-            const item = this._dragContext.item;
-            const itemTarget = this._dragContext.itemTarget;
+        this._dragContext.dragBy(e.pageX, e.pageY);
 
-            const element = document.getElementById(this._context.itemToId(item)!);
-            const elementTarget = document.getElementById(this._context.itemToId(itemTarget)!);
-            if (!element || !elementTarget) {
-                this._dragContext = undefined;
-                return;
-            }
-
-            elementTarget.style.border = "";
-            element.style.opacity = "0.7";
-
-            document.body.append(element);
-
-            const itemIndex = item.parent!.removeItem(item);
-
-            this._dragContext.startDrag(element, elementTarget, itemIndex);
-        }
-
-        placeElementPixel(this._dragContext.element!, this._dragContext.getRect(e.pageX, e.pageY));
-
-        let dropIndicator = document.getElementById("dropIndicator");
-        if(dropIndicator) {
-            dropIndicator.style.display = "none";
-        }
+        this._hideDropIndicator();
         
-        let dropElement: HTMLElement | null = null;
-
-        this._dragContext.element!.style.display = "none";
-        try {
-            dropElement = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement;
-            if(!this._context.idToItem(dropElement.id)) {
-                dropElement = null;
-            }
-        }
-        finally {
-            this._dragContext.element!.style.display = "";
-        }
-
+        let dropElement = this._getDropElement(e.clientX, e.clientY);
         if (!dropElement) {
-            this._dragContext.clearDropTarget();
+            this._dropContext = undefined;
             return;
         }
 
-        const dropRect = dropElement.getBoundingClientRect();
-
-        const h = dropRect.height;
-        const w = dropRect.width;
-
-        if (h === 0 || w === 0) {
+        const dropElementRect = dropElement.getBoundingClientRect();
+        if (dropElementRect.width === 0 || dropElementRect.height === 0) {
+            this._dropContext = undefined;
             return;
         }
 
-        const x = e.clientX - dropRect.left;
-        const y = e.clientY - dropRect.top;
-
-        const k = dropRect.height / dropRect.width;
-
-        const y1 = k * x;
-        const y2 = -k * x + h;
-
-        const beforeY1 = y < y1;
-        const beforeY2 = y < y2;
-
-        let q1 = beforeY1 && beforeY2;
-        let q2 = beforeY1 && !beforeY2;
-        let q3 = !beforeY1 && !beforeY2;
-        let q4 = !beforeY1 && beforeY2;
-
-        if (!dropIndicator) {
-            dropIndicator = document.createElement("div");
-            dropIndicator.id = "dropIndicator";
-            dropIndicator.style.position = "absolute";
-            dropIndicator.style.display = "none";
-            dropIndicator.style.border = "5px solid black"
-            document.body.append(dropIndicator);
+        if (!this._dropContext || this._dropContext.dropElement !== dropElement) {
+            this._dropContext = new DropContext(
+                dropElement,
+                dropElementRect.left,
+                dropElementRect.top,
+                dropElementRect.width,
+                dropElementRect.height
+            );
         }
 
-        const dropElementX = dropRect.left + window.pageXOffset;
-        const dropElementY = dropRect.top + window.pageYOffset;
+        this._dropContext.calcDropEdge(e.clientX, e.clientY);
 
-        dropIndicator.style.display = "";
-
-        if (q1) {
-            dropIndicator.style.left = dropElementX + "px";
-            dropIndicator.style.top = dropElementY + "px";
-            dropIndicator.style.width = dropElement.clientWidth + "px";
-            dropIndicator.style.height = (dropElement.clientHeight / 2) + "px";
-
-            this._dragContext.setDropTarget(dropElement, LayoutSide.Top);
-        }
-        if (q2) {
-            dropIndicator.style.left = dropElementX + (dropElement.clientWidth / 2) + "px";
-            dropIndicator.style.top = dropElementY + "px";
-            dropIndicator.style.width = (dropElement.clientWidth / 2) + "px";
-            dropIndicator.style.height = dropElement.clientHeight + "px";
-
-            this._dragContext.setDropTarget(dropElement, LayoutSide.Right);
-        }
-        if (q3) {
-            dropIndicator.style.left = dropElementX + "px";
-            dropIndicator.style.top = dropElementY + (dropElement.clientHeight / 2) + "px";
-            dropIndicator.style.width = dropElement.clientWidth + "px";
-            dropIndicator.style.height = (dropElement.clientHeight / 2) + "px";
-
-            this._dragContext.setDropTarget(dropElement, LayoutSide.Bottom);
-        }
-        if (q4) {
-            dropIndicator.style.left = dropElementX + "px";
-            dropIndicator.style.top = dropElementY + "px";
-            dropIndicator.style.width = (dropElement.clientWidth / 2) + "px";
-            dropIndicator.style.height = dropElement.clientHeight + "px";
-
-            this._dragContext.setDropTarget(dropElement, LayoutSide.Left);
-        }
+        const indicatorRect = this._dropContext.calcDropRect(window.pageXOffset, window.pageYOffset);
+        this._showDropIndicator(indicatorRect);
     }
 
     private _mouseUp(e: MouseEvent): void {
@@ -198,30 +125,60 @@ export class LayoutController {
             return;
         }
 
-        if (!this._dragContext.isDragging) {
-            this._dragContext = undefined;
-            return;
-        }
-
-        let dropIndicator = document.getElementById("dropIndicator");
-        if(dropIndicator) {
-            dropIndicator.style.display = "none";
-        }
-
-        this._dragContext.element!.style.opacity = "";
-
         const item = this._dragContext.item;
 
-        if (this._dragContext.hasDropTarget) {
-            const dropItem = this._context.idToItem(this._dragContext.dropElement.id)!;
+        this._dragContext.outerElement.style.opacity = "";
+
+        this._hideDropIndicator();
+
+        if (this._dropContext) {
+            const dropItem = this._context.idToItem(this._dropContext.dropElement.id)!;
             if (isLayoutLeaf(dropItem)) {
-                dropItem.insertSide(item, this._dragContext.dropEdge);
+                dropItem.insertSide(item, this._dropContext.dropEdge);
             }
+
         } else {
-            const itemIndex = this._dragContext.itemIndex!;
-            this._dragContext.itemParent.insertItem(item, itemIndex, this._dragContext.itemWeight);
+            const itemIndex = this._dragContext.index;
+            this._dragContext.group.insertItem(item, itemIndex, this._dragContext.weight);
         }
 
         this._dragContext = undefined;
+        this._dropContext = undefined;
+    }
+
+    private _getDropElement(x: number, y: number): HTMLElement | null {
+        this._dragContext!.hideDragElement();
+        try {
+            let dropElement = document.elementFromPoint(x, y);
+            if (!dropElement) {
+                return null;
+            }
+            if(!this._context.idToItem(dropElement.id)) {
+                return null;
+            }
+            return dropElement as HTMLElement;
+        }
+        finally {
+            this._dragContext!.showDragElement();
+        }
+    }
+
+    private _hideDropIndicator(): void {
+        const dropIndicator = document.getElementById("dropIndicator");
+        if (dropIndicator) {
+            dropIndicator.style.display = "none";
+        }
+    }
+
+    private _showDropIndicator(indicatorRect: LayoutItemRect): void {
+        let dropIndicator = document.getElementById("dropIndicator");
+        if (!dropIndicator) {
+            dropIndicator = document.createElement("div");
+            dropIndicator.id = "dropIndicator";
+            dropIndicator.style.border = "5px solid black"
+            document.body.append(dropIndicator);
+        }
+        dropIndicator.style.display = "";
+        placeElementPixel(dropIndicator, indicatorRect);
     }
 }

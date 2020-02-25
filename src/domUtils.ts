@@ -1,7 +1,5 @@
 export const isHTMLElement = (obj: any): obj is HTMLElement => obj && "id" in obj;
 
-
-
 export function ready(callback: () => void): void {
     if (document.readyState !== "loading") {
         callback();
