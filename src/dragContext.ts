@@ -27,7 +27,7 @@ export class DragContext {
 
     beginDrag(): void {
         this._prepareElementDrag();
-        this._group.removeItem(this._item);
+        this._group.excludeItem(this._item);
         this._isDragging = true;
     }
 
