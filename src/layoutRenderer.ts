@@ -9,7 +9,7 @@ const idGen = idGenerator("ra-layout");
 
 export class LayoutRenderer {
     constructor(
-        readonly root: LayoutItem) {
+        readonly root: LayoutGroup) {
 
         this._layoutGroupChanged = this._layoutGroupChanged.bind(this);
     }
@@ -23,6 +23,8 @@ export class LayoutRenderer {
         const rootElement = this._createRootElement(container);
 
         this._context = new LayoutContext(rootElement.id);
+
+        this.root.subscribeGroupChanged(this._layoutGroupChanged);
 
         this._renderItem(this.root, rootElement, this._context);
 
@@ -44,11 +46,6 @@ export class LayoutRenderer {
             if (!itemElement) {
                 itemElement = document.createElement("div");
                 itemElement.id = itemId;
-
-                if (isLayoutGroup(item)) {
-                    item.events.addListener(LayoutGroup.EventChanged, this._layoutGroupChanged);
-                }
-
             }
 
             element.append(itemElement);
@@ -69,7 +66,7 @@ export class LayoutRenderer {
         }
     }
 
-    private _layoutGroupChanged(group: LayoutGroup): void {
+    private _layoutGroupChanged(_sender: unknown, group: LayoutGroup, removedItems: LayoutItem[]): void {
         const groupElement = document.getElementById(this._context!.itemToId(group)!)!;
         this._reRenderGroup(group, groupElement, this._context!);
     }
@@ -101,8 +98,6 @@ export class LayoutRenderer {
     }
 
     private _renderGroup(group: LayoutGroup, element: HTMLElement, context: LayoutContext): void {
-        group.events.addListener(LayoutGroup.EventChanged, this._layoutGroupChanged);
-
         const arranger: LayoutArranger = this._getLayoutArranger(group);
 
         const rects = arranger.arrangeGroup(group);

@@ -7,7 +7,7 @@ ready(() => {
     const container2 = document.getElementById("container2")!;
 
 
-    const root = new LayoutGroup(null, LayoutDirection.Horizontal);
+    const root = new LayoutGroup(LayoutDirection.Horizontal);
 
     root.addLeaf("lightgreen");
     const group2 = root.addGroup(LayoutDirection.Vertical, 2);
