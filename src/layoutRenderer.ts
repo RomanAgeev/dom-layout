@@ -67,8 +67,29 @@ export class LayoutRenderer {
     }
 
     private _layoutGroupChanged(_sender: unknown, group: LayoutGroup, removedItems: LayoutItem[]): void {
+        for (const removedItem of removedItems) {
+            this._removeItem(removedItem);
+        }
+
         const groupElement = document.getElementById(this._context!.itemToId(group)!)!;
         this._reRenderGroup(group, groupElement, this._context!);
+    }
+
+    private _removeItem(item: LayoutItem): void {
+        const id = this._context!.itemToId(item)!;
+
+        const element = document.getElementById(id);
+        if (element) {
+            element.remove();
+        }
+
+        this._context!.unregiterItem(item);
+
+        if (isLayoutGroup(item)) {
+            for (const [child, weight] of item) {
+                this._removeItem(child);
+            }    
+        }
     }
 
     private _createRootElement(container: HTMLElement): HTMLElement {

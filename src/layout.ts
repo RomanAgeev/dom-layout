@@ -147,7 +147,7 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         const index = this.index(item);
         if (index >= 0) {
             this._removeIndex(index);
-            this._raiseGroupChanged(this, [item]);
+            this._raiseGroupChanged(this, [/*item*/]);
         }
         return index;
     }

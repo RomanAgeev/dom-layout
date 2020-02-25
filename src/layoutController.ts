@@ -74,9 +74,9 @@ export class LayoutController {
 
         this._dragContext = new DragContext(
             outerItem,
-            outerItem.parent,
-            outerItem.parent.weight(outerItem),
-            outerItem.parent.index(outerItem),
+            outerItem.parent!,
+            outerItem.parent!.weight(outerItem),
+            outerItem.parent!.index(outerItem),
             innerElement,
             outerElement,
             e.clientX - rect.left,
