@@ -1,4 +1,4 @@
-import { LayoutItem } from "./layout";
+import { LayoutItem, isLayoutGroup } from "./layout";
 
 export class LayoutContext {
     constructor(
@@ -31,6 +31,12 @@ export class LayoutContext {
         const id = this._layoutToDom.get(item)!;
 
         this._unregister(id, item);
+
+        if (isLayoutGroup(item)) {
+            for (const [child, weight] of item) {
+                this.unregiterItem(child);
+            }
+        }
     }
 
     idToItem(id: string): LayoutItem | undefined {

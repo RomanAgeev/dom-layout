@@ -30,9 +30,9 @@ export class LayoutLeaf extends LayoutItem {
     }
 }
 
-export const GroupChangedEvent = "GROUP_CHANGED";
+const layoutChangedEvent = "Layout_CHANGED";
 
-export type GroupChangedHandler = (sender: unknown, group: LayoutGroup, removedItems: LayoutItem[]) => void;
+export type LayoutChangedEventHandler = (groupChanged: LayoutGroup, itemsRemoved: LayoutItem[]) => void;
 
 export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, number]> {
     constructor(
@@ -49,12 +49,12 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         return this._items.length;
     }
 
-    subscribeGroupChanged(handler: GroupChangedHandler): void {
-        this._events.addListener(GroupChangedEvent, handler);
+    subscribeLayoutChanged(handler: LayoutChangedEventHandler): void {
+        this._events.addListener(layoutChangedEvent, handler);
     }
 
-    unsubscribeGroupChanged(hander: GroupChangedHandler): void {
-        this._events.removeListener(GroupChangedEvent, hander);
+    unsubscribeLayoutChanged(hander: LayoutChangedEventHandler): void {
+        this._events.removeListener(layoutChangedEvent, hander);
     }
 
     item(index: number): LayoutItem {
@@ -108,8 +108,6 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         const weight = this.weight(child);
         const halfWeight = weight / 2;
 
-        const removedItems: LayoutItem[] = [];
-
         if (isItemAppend(side, this.direction)) {
             this._weights.set(child, halfWeight);
             this._insertIndex(index + 1, item, halfWeight);
@@ -136,11 +134,9 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
                 group._insertIndex(0, item, 1);
                 group._insertIndex(1, child, 1);
             }
-
-            removedItems.push(child);
         }
 
-        this._raiseGroupChanged(this, removedItems);
+        this._raiseGroupChanged(this, []);
     }
 
     removeItem(item: LayoutItem): void {
@@ -169,11 +165,11 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         item.parent = undefined
     }
 
-    private _raiseGroupChanged(group: LayoutGroup, removedItems: LayoutItem[]): void {
-        this._events.emit(GroupChangedEvent, this, group, removedItems);
+    private _raiseGroupChanged(groupChanged: LayoutGroup, itemsRemoved: LayoutItem[]): void {
+        this._events.emit(layoutChangedEvent, groupChanged, itemsRemoved);
 
         if (this.parent) {
-            this.parent._raiseGroupChanged(group, removedItems);
+            this.parent._raiseGroupChanged(groupChanged, itemsRemoved);
         }
     }
 
