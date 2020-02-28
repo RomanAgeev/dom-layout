@@ -1,4 +1,4 @@
-import { LayoutItem, isLayoutGroup, LayoutGroup } from "./layout";
+import { LayoutItem } from "./layout";
 import { idGenerator } from "./utils";
 
 export class LayoutContext {
@@ -6,12 +6,13 @@ export class LayoutContext {
         this._idGen = idGenerator(idPrefix);
     }
 
-    private readonly _domToLayout = new Map<string, LayoutItem>();
-    private readonly _layoutToDom = new Map<LayoutItem, string>();
+    private readonly _idToItem = new Map<string, LayoutItem>();
+    private readonly _itemToId = new Map<LayoutItem, string>();
+    private readonly _stash: { item: LayoutItem, itemId: string }[] = [];
     private readonly _idGen: () => string;
 
     registerItem(item: LayoutItem): string {
-        if (this._layoutToDom.has(item)) {
+        if (this._itemToId.has(item)) {
             throw new Error("TODO");
         }
 
@@ -20,58 +21,59 @@ export class LayoutContext {
         return itemId;
     }
 
-    registerItemId(item: LayoutItem, itemId: string): void {
-        if (this._layoutToDom.has(item)) {
-            throw new Error("TODO");
-        }
-        if (this._domToLayout.has(itemId)) {
+    unregisterItem(item: LayoutItem): void {
+        if (!this._itemToId.has(item)) {
             throw new Error("TODO");
         }
 
-        this._register(itemId, item);
+        const itemId = this._itemToId.get(item);
+        if (!itemId) {
+            throw new Error("TODO");
+        }
+
+        this._unregister(itemId, item);
     }
 
-    unregisterId(id: string): void {
-        if (!this._domToLayout.has(id)) {
-            throw new Error("id is unknown");
+    stash(item: LayoutItem): void {
+        if (!this._itemToId.has(item)) {
+            throw new Error("TODO");
         }
 
-        const item = this._domToLayout.get(id)!;
+        const itemId = this._itemToId.get(item);
+        if (!itemId) {
+            throw new Error("TODO");
+        }
 
-        this._unregister(id, item);
+        this._stash.push({ item, itemId });
+
+        this._unregister(itemId, item);
     }
 
-    unregiterItem(item: LayoutItem): void {
-        if (!this._layoutToDom.has(item)) {
-            throw new Error("item is unknown");
+    unstash(): void {
+        if (this._stash.length === 0) {
+            throw new Error("TODO");
         }
 
-        const id = this._layoutToDom.get(item)!;
+        this._stash.forEach(({item, itemId}) => this._register(itemId, item));
 
-        this._unregister(id, item);
-
-        if (isLayoutGroup(item)) {
-            for (const [child, weight] of item) {
-                this.unregiterItem(child);
-            }
-        }
+        this._stash.length = 0;
     }
 
     idToItem(id: string): LayoutItem | undefined {
-        return this._domToLayout.get(id);
+        return this._idToItem.get(id);
     }
 
     itemToId(item: LayoutItem): string | undefined {
-        return this._layoutToDom.get(item);
+        return this._itemToId.get(item);
     }
 
     private _register(id: string, item: LayoutItem): void {
-        this._domToLayout.set(id, item);
-        this._layoutToDom.set(item, id);
+        this._idToItem.set(id, item);
+        this._itemToId.set(item, id);
     }
 
     private _unregister(id: string, item: LayoutItem): void {
-        this._domToLayout.delete(id);
-        this._layoutToDom.delete(item);
+        this._idToItem.delete(id);
+        this._itemToId.delete(item);
     }
 }

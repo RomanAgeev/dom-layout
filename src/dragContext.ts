@@ -1,4 +1,4 @@
-import { LayoutItem, LayoutSide, LayoutGroup, LayoutLeaf, isLayoutLeaf } from "./layout";
+import { LayoutItem, LayoutSide, LayoutGroup, LayoutLeaf, isLayoutLeaf, isLayoutGroup } from "./layout";
 import { LayoutContext } from "./layoutContext";
 import { DropContext } from "./dropContext";
 import { LayoutItemRect } from "./layoutUtils";
@@ -35,7 +35,7 @@ export class DragContext {
     }
 
     beginDrag(): void {
-        this._layoutContext.unregiterItem(this._outerItem);
+        this._stashRecursive(this._outerItem);
         this._group.removeItem(this._outerItem);
         this._isDragging = true;
     }
@@ -62,13 +62,23 @@ export class DragContext {
         };
     }
 
+    private _stashRecursive(item: LayoutItem): void {
+        this._layoutContext.stash(item);
+
+        if (isLayoutGroup(item)) {
+            for (const [child, weight] of item) {
+                this._stashRecursive(child);
+            }
+        }
+    }
+
     private _completeDrag(dropLeaf: LayoutLeaf, dropEdge: LayoutSide): void {
-        this._layoutContext.registerItemId(this._outerItem, this.outerId);
+        this._layoutContext.unstash();
         dropLeaf.insertSide(this._outerItem, dropEdge);
     }
 
     private _cancelDrag(): void {
-        this._layoutContext.registerItemId(this._outerItem, this.outerId);
+        this._layoutContext.unstash();
         this._group.insertItem(this._outerItem, this._index, this._weight);
     }
 }

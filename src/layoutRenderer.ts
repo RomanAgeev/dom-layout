@@ -46,7 +46,7 @@ export class LayoutRenderer {
             if (itemElement) {
                 itemElement.remove();
             }
-            this._layoutContext.unregiterItem(item);
+            this._layoutContext.unregisterItem(item);
         }
 
         if (isLayoutGroup(item)) {
