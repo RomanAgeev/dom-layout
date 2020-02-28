@@ -1,16 +1,34 @@
-import { LayoutItem, isLayoutGroup } from "./layout";
+import { LayoutItem, isLayoutGroup, LayoutGroup } from "./layout";
+import { idGenerator } from "./utils";
 
 export class LayoutContext {
-    constructor(
-        readonly rootId: string) {
+    constructor(idPrefix: string) {
+        this._idGen = idGenerator(idPrefix);
     }
 
     private readonly _domToLayout = new Map<string, LayoutItem>();
     private readonly _layoutToDom = new Map<LayoutItem, string>();
+    private readonly _idGen: () => string;
 
-    register(id: string, item: LayoutItem): void {
-        this._domToLayout.set(id, item);
-        this._layoutToDom.set(item, id);
+    registerItem(item: LayoutItem): string {
+        if (this._layoutToDom.has(item)) {
+            throw new Error("TODO");
+        }
+
+        const itemId = this._idGen();
+        this._register(itemId, item);
+        return itemId;
+    }
+
+    registerItemId(item: LayoutItem, itemId: string): void {
+        if (this._layoutToDom.has(item)) {
+            throw new Error("TODO");
+        }
+        if (this._domToLayout.has(itemId)) {
+            throw new Error("TODO");
+        }
+
+        this._register(itemId, item);
     }
 
     unregisterId(id: string): void {
@@ -45,6 +63,11 @@ export class LayoutContext {
 
     itemToId(item: LayoutItem): string | undefined {
         return this._layoutToDom.get(item);
+    }
+
+    private _register(id: string, item: LayoutItem): void {
+        this._domToLayout.set(id, item);
+        this._layoutToDom.set(item, id);
     }
 
     private _unregister(id: string, item: LayoutItem): void {

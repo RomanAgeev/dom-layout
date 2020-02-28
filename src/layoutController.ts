@@ -1,22 +1,36 @@
 import { LayoutContext } from "./layoutContext";
 import { DragContext } from "./dragContext";
 import { placeElementPixel, LayoutItemRect } from "./layoutUtils";
-import { LayoutSide, isLayoutLeaf, LayoutItem, LayoutLeaf } from "./layout";
+import { LayoutSide, isLayoutLeaf, LayoutItem, LayoutLeaf, LayoutGroup } from "./layout";
 import { DropContext } from "./dropContext";
 import { hideHTMLElement, showHTMLElement } from "./domUtils";
 
 const dropIndicatorId = "dropIndicator";
 
-export class LayoutController {
+export class LayoutController {    
     constructor(
-        private readonly _context: LayoutContext) {
+        private readonly _layoutRoot: LayoutGroup,
+        private readonly _layoutContext: LayoutContext) {
         this._itemOver = this._itemOver.bind(this);
         this._itemOut = this._itemOut.bind(this);
         this._mouseDown = this._mouseDown.bind(this);
         this._mouseMove = this._mouseMove.bind(this);
         this._mouseUp = this._mouseUp.bind(this);
+    }
 
-        const rootElement = document.getElementById(this._context.rootId)!;
+    private _dragContext?: DragContext;
+    private _dropContext?: DropContext;
+
+    activate(): void {
+        const rootId = this._layoutContext.itemToId(this._layoutRoot);
+        if (!rootId) {
+            throw new Error("TODO");
+        }
+
+        const rootElement = document.getElementById(rootId);
+        if (!rootElement) {
+            throw new Error("TODO");
+        }
 
         rootElement.addEventListener("mouseover", this._itemOver);
         rootElement.addEventListener("mouseout", this._itemOut);
@@ -25,9 +39,6 @@ export class LayoutController {
         document.addEventListener("mousemove", this._mouseMove);
         document.addEventListener("mouseup", this._mouseUp);
     }
-
-    private _dragContext?: DragContext;
-    private _dropContext?: DropContext;
 
     private _itemOver(e: Event): void {
         (e.target as HTMLElement).style.border = "2px solid black"
@@ -47,7 +58,7 @@ export class LayoutController {
         const innerElement = e.target as HTMLElement;
         const innerId = innerElement.id;
 
-        const innerItem = this._context.idToItem(innerId);
+        const innerItem = this._layoutContext.idToItem(innerId);
         if (!innerItem) {
             return;
         }
@@ -60,7 +71,7 @@ export class LayoutController {
             return;
         }
 
-        const outerId = this._context.itemToId(outerItem);
+        const outerId = this._layoutContext.itemToId(outerItem);
         if (!outerId) {
             return;
         }
@@ -75,7 +86,7 @@ export class LayoutController {
         const offsetY = e.clientY - rect.top;
 
         this._dragContext = new DragContext(
-            this._context,
+            this._layoutContext,
             innerItem,
             outerItem,
             offsetX,
@@ -112,7 +123,7 @@ export class LayoutController {
             return;
         }
 
-        const dropItem = this._context.idToItem(dropElement.id);
+        const dropItem = this._layoutContext.idToItem(dropElement.id);
         if (!dropItem) {
             this._dropContext = undefined;
             return;
@@ -168,7 +179,7 @@ export class LayoutController {
             if (!dropElement) {
                 return null;
             }
-            if(!this._context.idToItem(dropElement.id)) {
+            if(!this._layoutContext.idToItem(dropElement.id)) {
                 return null;
             }
             return dropElement as HTMLElement;

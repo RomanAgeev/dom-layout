@@ -63,12 +63,12 @@ export class DragContext {
     }
 
     private _completeDrag(dropLeaf: LayoutLeaf, dropEdge: LayoutSide): void {
-        this._layoutContext.register(this.outerId, this._outerItem);
+        this._layoutContext.registerItemId(this._outerItem, this.outerId);
         dropLeaf.insertSide(this._outerItem, dropEdge);
     }
 
     private _cancelDrag(): void {
-        this._layoutContext.register(this.outerId, this._outerItem);
+        this._layoutContext.registerItemId(this._outerItem, this.outerId);
         this._group.insertItem(this._outerItem, this._index, this._weight);
     }
 }

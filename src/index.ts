@@ -1,6 +1,7 @@
 import { LayoutDirection, LayoutGroup } from "./layout";
 import { LayoutRenderer } from "./layoutRenderer";
 import { ready } from "./domUtils";
+import { LayoutContext } from "./layoutContext";
 
 ready(() => {
     const container = document.getElementById("container")!;
@@ -26,6 +27,6 @@ ready(() => {
     group3.addLeaf("blue");
     group3.addLeaf("lightblue");
 
-    new LayoutRenderer(root).render(container);
-    new LayoutRenderer(root).render(container2);
+    new LayoutRenderer(root, "ra-layout-large").render(container);
+    new LayoutRenderer(root, "ra-layout-small").render(container2);
 });
