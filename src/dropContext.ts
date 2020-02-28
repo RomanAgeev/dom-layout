@@ -1,9 +1,9 @@
 import { LayoutSide, LayoutItem } from "./layout";
-import { LayoutItemRect, placeElementPixel } from "./layoutUtils";
+import { LayoutItemRect } from "./layoutUtils";
 
 export class DropContext {
     constructor(
-        readonly dropElement: HTMLElement,
+        readonly dropItem: LayoutItem,
         private readonly _left: number,
         private readonly _top: number,
         private readonly _width: number,

@@ -76,14 +76,15 @@ export class LayoutRenderer {
     }
 
     private _removeItem(item: LayoutItem): void {
-        const id = this._context!.itemToId(item)!;
+        const id = this._context!.itemToId(item);
+        if (id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.remove();
+            }
 
-        const element = document.getElementById(id);
-        if (element) {
-            element.remove();
+            this._context!.unregiterItem(item);
         }
-
-        this._context!.unregiterItem(item);
 
         if (isLayoutGroup(item)) {
             for (const [child, weight] of item) {

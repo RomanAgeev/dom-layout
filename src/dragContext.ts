@@ -1,19 +1,32 @@
-import { LayoutItem, LayoutSide, LayoutGroup, LayoutLeaf } from "./layout";
+import { LayoutItem, LayoutSide, LayoutGroup, LayoutLeaf, isLayoutLeaf } from "./layout";
+import { LayoutContext } from "./layoutContext";
+import { DropContext } from "./dropContext";
 import { LayoutItemRect } from "./layoutUtils";
 
 export class DragContext {
     constructor(
-        private readonly _item: LayoutItem,
-        private readonly _group: LayoutGroup,
-        private readonly _weight: number,
-        private readonly _index: number,
-        private readonly _innerElement: HTMLElement,
-        private readonly _outerElement: HTMLElement,
+        private readonly _layoutContext: LayoutContext,
+        private readonly _innerItem: LayoutItem,
+        private readonly _outerItem: LayoutItem,
         private readonly _offsetX: number,
         private readonly _offsetY: number,
         private readonly _width: number,
-        private readonly _height: number) {
+        private readonly _height:  number) {
+
+        this.innerId = this._layoutContext.itemToId(this._innerItem)!;
+        this.outerId = this._layoutContext.itemToId(this._outerItem)!;
+
+        this._group = this._outerItem.parent!;
+        this._weight = this._group.weight(this._outerItem);
+        this._index = this._group.index(this._outerItem);
     }
+    
+    readonly innerId: string;
+    readonly outerId: string;
+
+    private readonly _group: LayoutGroup;
+    private readonly _weight: number;
+    private readonly _index: number;
 
     private _isDragging = false;
 
@@ -21,25 +34,24 @@ export class DragContext {
         return this._isDragging;
     }
 
-    get dragElement(): HTMLElement {
-        return this._outerElement;
-    }
-
     beginDrag(): void {
-        this._prepareElementDrag();
-        this._group.excludeItem(this._item);
+        this._layoutContext.unregiterItem(this._outerItem);
+        this._group.removeItem(this._outerItem);
         this._isDragging = true;
     }
 
-    endDrag(dropItem: LayoutLeaf, dropEdge: LayoutSide): void {
-        this._prepareElementDrop();
-        dropItem.insertSide(this._item, dropEdge);
-    }
+    endDrag(dropContext?: DropContext): void {
+        let dropLeaf =
+            dropContext && isLayoutLeaf(dropContext.dropItem) ?
+            dropContext.dropItem :
+            undefined;
 
-    cancelDrag(): void {
-        this._prepareElementDrop();
-        this._group.insertItem(this._item, this._index, this._weight);
-    }
+        if (dropLeaf) {
+            this._completeDrag(dropLeaf, dropContext!.dropEdge);
+        } else {
+            this._cancelDrag();
+        }
+    }    
 
     calcDragRect(x: number, y: number): LayoutItemRect {
         return {
@@ -50,13 +62,13 @@ export class DragContext {
         };
     }
 
-    private _prepareElementDrag(): void {
-        this._innerElement.style.border = "";
-        this._outerElement.style.opacity = "0.7";
-        document.body.append(this._outerElement);
+    private _completeDrag(dropLeaf: LayoutLeaf, dropEdge: LayoutSide): void {
+        this._layoutContext.register(this.outerId, this._outerItem);
+        dropLeaf.insertSide(this._outerItem, dropEdge);
     }
 
-    private _prepareElementDrop(): void {
-        this._outerElement.style.opacity = "";
+    private _cancelDrag(): void {
+        this._layoutContext.register(this.outerId, this._outerItem);
+        this._group.insertItem(this._outerItem, this._index, this._weight);
     }
 }

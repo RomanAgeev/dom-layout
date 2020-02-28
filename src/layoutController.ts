@@ -71,16 +71,15 @@ export class LayoutController {
         }
         
         const rect = outerElement.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
 
         this._dragContext = new DragContext(
+            this._context,
+            innerItem,
             outerItem,
-            outerItem.parent!,
-            outerItem.parent!.weight(outerItem),
-            outerItem.parent!.index(outerItem),
-            innerElement,
-            outerElement,
-            e.clientX - rect.left,
-            e.clientY - rect.top,
+            offsetX,
+            offsetY,
             rect.width,
             rect.height
         );
@@ -91,12 +90,19 @@ export class LayoutController {
             return;
         }
 
+        const innerElement = document.getElementById(this._dragContext.innerId) as HTMLElement;
+        const outerElement = document.getElementById(this._dragContext.outerId) as HTMLElement;
+
         if (!this._dragContext.isDragging) {
+            innerElement.style.border = "";
+            outerElement.style.opacity = "0.7";
+            document.body.append(outerElement);
+
             this._dragContext.beginDrag();
         }
 
         const dragRect = this._dragContext.calcDragRect(e.pageX, e.pageY);
-        placeElementPixel(this._dragContext.dragElement, dragRect);
+        placeElementPixel(outerElement, dragRect);
 
         this._hideDropIndicator();
         
@@ -106,15 +112,17 @@ export class LayoutController {
             return;
         }
 
-        if (!this._dropContext || this._dropContext.dropElement !== dropElement) {
+        const dropItem = this._context.idToItem(dropElement.id);
+        if (!dropItem) {
+            this._dropContext = undefined;
+            return;
+        }
+
+        if (!this._dropContext || this._dropContext.dropItem !== dropItem) {
             const dropElementRect = dropElement.getBoundingClientRect();
-            if (dropElementRect.width === 0 || dropElementRect.height === 0) {
-                this._dropContext = undefined;
-                return;
-            }
     
             this._dropContext = new DropContext(
-                dropElement,
+                dropItem,
                 dropElementRect.left,
                 dropElementRect.top,
                 dropElementRect.width,
@@ -135,19 +143,13 @@ export class LayoutController {
 
         this._hideDropIndicator();
 
-        let dropLeaf: LayoutLeaf | undefined = undefined;
-        if (this._dropContext) {
-            const dropItem = this._context.idToItem(this._dropContext.dropElement.id);
-            if (dropItem && isLayoutLeaf(dropItem)) {
-                dropLeaf = dropItem;
-            }
-        }
+        const innerElement = document.getElementById(this._dragContext.innerId) as HTMLElement;
+        const outerElement = document.getElementById(this._dragContext.outerId) as HTMLElement;
 
-        if (dropLeaf) {
-            this._dragContext.endDrag(dropLeaf, this._dropContext!.dropEdge);
-        } else {
-            this._dragContext.cancelDrag();
-        }
+        innerElement.style.border = "2px solid black"
+        outerElement.style.opacity = "";
+
+        this._dragContext.endDrag(this._dropContext);
 
         this._dragContext = undefined;
         this._dropContext = undefined;
@@ -158,7 +160,9 @@ export class LayoutController {
             throw new Error("dragContext doesn't exist");
         }
 
-        hideHTMLElement(this._dragContext.dragElement);
+        const outerElement = document.getElementById(this._dragContext.outerId) as HTMLElement;
+
+        hideHTMLElement(outerElement);
         try {
             let dropElement = document.elementFromPoint(x, y);
             if (!dropElement) {
@@ -170,7 +174,7 @@ export class LayoutController {
             return dropElement as HTMLElement;
         }
         finally {
-            showHTMLElement(this._dragContext.dragElement);
+            showHTMLElement(outerElement);
         }
     }
 
