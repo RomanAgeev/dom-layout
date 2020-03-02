@@ -16,24 +16,26 @@ ready(() => {
     const group22 = group2.addGroup(LayoutDirection.Horizontal);
     const group23 = group2.addGroup(LayoutDirection.Horizontal, 2);
 
-    group22.addLeaf("yellow");
+    group22.addLeaf("gold");
     group22.addLeaf("orange", 2);
-    group23.addLeaf("gray");
-    group23.addLeaf("lightgray", 2);
+    group23.addLeaf("black");
+    group23.addLeaf("gray", 2);
     group23.addLeaf("darkgray", 3);
 
     group3.addLeaf("blue");
     group3.addLeaf("lightblue");
 
-    const itemRender: ItemRender = (payload: unknown, container: HTMLElement): void => {
-        const element = document.createElement("div");
-        element.style.width = "100%";
-        element.style.height = "100%";
-        element.style.overflow = "hidden";
-        element.style.textOverflow = "hidden";
-        element.textContent = payload as string;
-        element.style.textAlign = "center";
-        container.append(element);
+    const itemRender: ItemRender = (payload: unknown, container: HTMLElement): void => {        
+        const cardElement = document.createElement("div");
+        cardElement.classList.add("card");
+
+        const textElement = document.createElement("span");
+        textElement.classList.add("card-text");
+        textElement.innerText = payload as string;
+        textElement.style.color = payload as string;
+        cardElement.append(textElement);
+
+        container.append(cardElement);
     };
 
     new LayoutRenderer(layout, itemRender, "ra-layout-large").render(container);
