@@ -41,6 +41,7 @@
                 right: 0;
                 top: 0;
                 height: 20px;
+                cursor: grab;
             }
 
             .item-content {
@@ -52,6 +53,10 @@
 
             .hovered {
                 border: 2px solid black !important;
+            }
+
+            body.dragging * {
+                cursor: grabbing;
             }
         </style>
     </head>

@@ -132,6 +132,8 @@ export class LayoutController {
             rect.width,
             rect.height
         );
+
+        document.body.classList.add("dragging");
     }
 
     private _mouseMove(e: MouseEvent): void {
@@ -196,6 +198,8 @@ export class LayoutController {
         }
 
         this._hideDropIndicator();
+
+        document.body.classList.remove("dragging");
 
         const innerElement = document.getElementById(this._dragContext.innerId) as HTMLElement;
         const outerElement = document.getElementById(this._dragContext.outerId) as HTMLElement;
