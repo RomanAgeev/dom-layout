@@ -184,7 +184,8 @@ export class LayoutController {
         this._dropContext.calcDropEdge(e.clientX, e.clientY);
 
         const dropRect = this._dropContext.calcDropRect(window.pageXOffset, window.pageYOffset);
-        this._showDropIndicator(dropRect);
+
+        this._showDropIndicator(dropRect, this._dragContext.dragColor);
     }
 
     private _mouseUp(e: MouseEvent): void {
@@ -249,13 +250,14 @@ export class LayoutController {
         }
     }
 
-    private _showDropIndicator(indicatorRect: LayoutItemRect): void {
+    private _showDropIndicator(indicatorRect: LayoutItemRect, indicatorColor: string): void {
         let dropIndicator = document.getElementById(dropIndicatorId);
         if (!dropIndicator) {
             dropIndicator = document.createElement("div");
             dropIndicator.id = dropIndicatorId;
             document.body.append(dropIndicator);
         }
+        dropIndicator.style.borderColor = indicatorColor;
         showHTMLElement(dropIndicator);
         placeElementPixel(dropIndicator, indicatorRect);
     }

@@ -34,6 +34,9 @@ export class DragContext {
     get isDragging(): boolean {
         return this._isDragging;
     }
+    get dragColor(): string {
+        return this._innerItem.payload as string;
+    }
 
     beginDrag(): void {
         this._stashRecursive(this._outerItem);
