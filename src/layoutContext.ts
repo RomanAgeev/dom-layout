@@ -8,15 +8,18 @@ export class LayoutContext {
 
     private readonly _idToItem = new Map<string, LayoutItem>();
     private readonly _itemToId = new Map<LayoutItem, string>();
-    private readonly _stash: { item: LayoutItem, itemId: string }[] = [];
     private readonly _idGen: () => string;
+    
+    registerIndex(item: LayoutItem, itemId: string): void {
+        this._checkItem(item);
+        this._checkItemId(itemId);
+        this._register(itemId, item);
+    }
 
     registerItem(item: LayoutItem): string {
-        if (this._itemToId.has(item)) {
-            throw new Error("TODO");
-        }
-
-        const itemId = this._idGen();
+        this._checkItem(item);
+        let itemId;
+        while (this._idToItem.has(itemId = this._idGen()));
         this._register(itemId, item);
         return itemId;
     }
@@ -32,31 +35,6 @@ export class LayoutContext {
         }
 
         this._unregister(itemId, item);
-    }
-
-    stash(item: LayoutItem): void {
-        if (!this._itemToId.has(item)) {
-            throw new Error("TODO");
-        }
-
-        const itemId = this._itemToId.get(item);
-        if (!itemId) {
-            throw new Error("TODO");
-        }
-
-        this._stash.push({ item, itemId });
-
-        this._unregister(itemId, item);
-    }
-
-    unstash(): void {
-        if (this._stash.length === 0) {
-            throw new Error("TODO");
-        }
-
-        this._stash.forEach(({item, itemId}) => this._register(itemId, item));
-
-        this._stash.length = 0;
     }
 
     idToItem(id: string): LayoutItem | undefined {
@@ -75,5 +53,17 @@ export class LayoutContext {
     private _unregister(id: string, item: LayoutItem): void {
         this._idToItem.delete(id);
         this._itemToId.delete(item);
+    }
+
+    private _checkItem(item: LayoutItem): void {
+        if (this._itemToId.has(item)) {
+            throw new Error("TODO");
+        }
+    }
+
+    private _checkItemId(itemId: string): void {
+        if (this._idToItem.has(itemId)) {
+            throw new Error("TODO");
+        }
     }
 }

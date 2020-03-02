@@ -140,16 +140,12 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
     }
 
     removeItem(item: LayoutItem): void {
-        this._removeItem(item);
-        this._raiseGroupChanged(this, [item]);
-    }
-
-    private _removeItem(item: LayoutItem): void {
         const index = this.index(item);
         if (index < 0) {
             throw new Error("item doesn't exist");
         }
         this._removeIndex(index);
+        this._raiseGroupChanged(this, [item]);
     }
 
     private _insertIndex(index: number, item: LayoutItem, weight: number): void {

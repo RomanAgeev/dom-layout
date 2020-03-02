@@ -27,6 +27,7 @@ export class DragContext {
     private readonly _group: LayoutGroup;
     private readonly _weight: number;
     private readonly _index: number;
+    private readonly _stash: { item: LayoutItem, itemId: string }[] = [];
 
     private _isDragging = false;
 
@@ -46,6 +47,8 @@ export class DragContext {
             dropContext.dropItem :
             undefined;
 
+        this._unstash();
+        
         if (dropLeaf) {
             this._completeDrag(dropLeaf, dropContext!.dropEdge);
         } else {
@@ -63,7 +66,14 @@ export class DragContext {
     }
 
     private _stashRecursive(item: LayoutItem): void {
-        this._layoutContext.stash(item);
+        const itemId = this._layoutContext.itemToId(item);
+        if (!itemId) {
+            throw new Error("TODO");
+        }
+
+        this._stash.push({ item, itemId });
+
+        this._layoutContext.unregisterItem(item);
 
         if (isLayoutGroup(item)) {
             for (const [child, weight] of item) {
@@ -72,13 +82,20 @@ export class DragContext {
         }
     }
 
+    private _unstash(): void {
+        if (this._stash.length === 0) {
+            throw new Error("TODO");
+        }
+
+        this._stash.forEach(({item, itemId}) => this._layoutContext.registerIndex(item, itemId));
+        this._stash.length = 0;
+    }
+
     private _completeDrag(dropLeaf: LayoutLeaf, dropEdge: LayoutSide): void {
-        this._layoutContext.unstash();
         dropLeaf.insertSide(this._outerItem, dropEdge);
     }
 
     private _cancelDrag(): void {
-        this._layoutContext.unstash();
         this._group.insertItem(this._outerItem, this._index, this._weight);
     }
 }

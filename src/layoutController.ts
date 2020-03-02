@@ -1,7 +1,7 @@
 import { LayoutContext } from "./layoutContext";
 import { DragContext } from "./dragContext";
 import { placeElementPixel, LayoutItemRect } from "./layoutUtils";
-import { LayoutSide, isLayoutLeaf, LayoutItem, LayoutLeaf, LayoutGroup } from "./layout";
+import { LayoutGroup } from "./layout";
 import { DropContext } from "./dropContext";
 import { hideHTMLElement, showHTMLElement } from "./domUtils";
 
@@ -11,6 +11,7 @@ export class LayoutController {
     constructor(
         private readonly _layoutRoot: LayoutGroup,
         private readonly _layoutContext: LayoutContext) {
+
         this._itemOver = this._itemOver.bind(this);
         this._itemOut = this._itemOut.bind(this);
         this._mouseDown = this._mouseDown.bind(this);
@@ -41,12 +42,12 @@ export class LayoutController {
     }
 
     private _itemOver(e: Event): void {
-        (e.target as HTMLElement).style.border = "2px solid black"
+        (e.target as HTMLElement).classList.add("hovered");
         e.preventDefault();
     }
 
     private _itemOut(e: Event): void {
-        (e.target as HTMLElement).style.border = "";
+        (e.target as HTMLElement).classList.remove("hovered");
         e.preventDefault();
     }
 
@@ -105,8 +106,8 @@ export class LayoutController {
         const outerElement = document.getElementById(this._dragContext.outerId) as HTMLElement;
 
         if (!this._dragContext.isDragging) {
-            innerElement.style.border = "";
-            outerElement.style.opacity = "0.7";
+            innerElement.classList.remove("hovered");
+            outerElement.classList.add("dragged");
             document.body.append(outerElement);
 
             this._dragContext.beginDrag();
@@ -152,13 +153,18 @@ export class LayoutController {
             return;
         }
 
+        if (!this._dragContext.isDragging) {
+            this._dragContext = undefined;
+            return;
+        }
+
         this._hideDropIndicator();
 
         const innerElement = document.getElementById(this._dragContext.innerId) as HTMLElement;
         const outerElement = document.getElementById(this._dragContext.outerId) as HTMLElement;
 
-        innerElement.style.border = "2px solid black"
-        outerElement.style.opacity = "";
+        innerElement.classList.add("hovered");
+        outerElement.classList.remove("dragged");
 
         this._dragContext.endDrag(this._dropContext);
 

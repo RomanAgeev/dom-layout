@@ -1,5 +1,5 @@
 import { LayoutItem, isLayoutLeaf, isLayoutGroup, LayoutGroup, LayoutDirection, LayoutLeaf } from "./layout";
-import { idGenerator, identity, constant } from "./utils";
+import { identity, constant } from "./utils";
 import { LayoutController } from "./layoutController";
 import { LayoutArranger } from "./layoutArranger";
 import { placeElementPercent } from "./layoutUtils";
