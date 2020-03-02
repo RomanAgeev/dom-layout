@@ -64,7 +64,14 @@ export class LayoutRenderer {
 
         const arranger: LayoutArranger = this._getLayoutArranger(group);
 
-        for (const [item, rect] of arranger.arrangeGroup(group)) {
+        for (const { item, rect } of arranger.arrangeGroup(group)) {
+            if (!item) {
+                const separatorElement = document.createElement("div");
+                placeElementPercent(separatorElement, rect);
+                groupElement.append(separatorElement);
+                continue;
+            }
+
             let itemId = this._layoutContext.itemToId(item);
             let itemElement =
                 itemId ?
@@ -98,7 +105,8 @@ export class LayoutRenderer {
         contentElement.classList.add("item", "item-content");
 
         contanerElement.append(headerElement, contentElement);
-        contanerElement.style.border = `2px solid ${item.payload}`;
+        contanerElement.classList.add("item-container");
+        contanerElement.style.borderColor = item.payload as string;
 
         this._itemRender(item.payload, contentElement);
     }

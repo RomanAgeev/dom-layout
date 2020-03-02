@@ -27,11 +27,8 @@ ready(() => {
 
     const itemRender: ItemRender = (payload: unknown, container: HTMLElement): void => {
         const element = document.createElement("div");
-        // element.style.background = payload as string;
         element.style.width = "100%";
         element.style.height = "100%";
-        // container.style.padding = "30px";
-        container.style.overflow = "hidden";
         element.style.overflow = "hidden";
         element.style.textOverflow = "hidden";
         element.textContent = payload as string;

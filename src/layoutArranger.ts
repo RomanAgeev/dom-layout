@@ -9,8 +9,8 @@ export class LayoutArranger {
         private readonly _getHeight: (x: number) => number) {
     }    
 
-    arrangeGroup(group: LayoutGroup): Map<LayoutItem, LayoutItemRect> {
-        const rects = new Map<LayoutItem, LayoutItemRect>();
+    arrangeGroup(group: LayoutGroup): { item: LayoutItem | null, rect: LayoutItemRect }[] {
+        const rects: { item: LayoutItem | null, rect: LayoutItemRect }[] = [];
 
         if (group.count === 0) {
             return rects;
@@ -20,17 +20,34 @@ export class LayoutArranger {
         for (const [_item, weight] of group) {
             sum += weight;
         }
+
+        const totalPercent = 100 - group.count + 1;
        
         let start = 0;
         for (const [item, weight] of group) {
-            const size = weight / sum * 100;
+            if (start > 0) {
+                const separatorRect = {
+                    left: this._getLeft(start),
+                    top: this._getTop(start),
+                    width: this._getWidth(1),
+                    height: this._getHeight(1),
+                };
 
-            rects.set(item, {
+                rects.push({ item: null, rect: separatorRect });
+
+                start++;
+            }
+
+            const size = weight / sum * totalPercent;
+
+            const rect: LayoutItemRect = {
                 left: this._getLeft(start),
                 top: this._getTop(start),
                 width: this._getWidth(size),
                 height: this._getHeight(size),
-            });
+            };
+
+            rects.push({item, rect });
 
             start += size;
         }
