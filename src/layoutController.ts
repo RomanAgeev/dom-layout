@@ -1,15 +1,15 @@
 import { LayoutContext } from "./layoutContext";
 import { DragContext } from "./dragContext";
-import { placeElementPixel, LayoutItemRect } from "./layoutUtils";
-import { LayoutGroup } from "./layout";
+import { placeElementPixel, LayoutItemRect, headerId } from "./layoutUtils";
+import { Layout } from "./layout";
 import { DropContext } from "./dropContext";
 import { hideHTMLElement, showHTMLElement } from "./domUtils";
 
 const dropIndicatorId = "dropIndicator";
 
-export class LayoutController {    
+export class LayoutController {
     constructor(
-        private readonly _layoutRoot: LayoutGroup,
+        private readonly _layout: Layout,
         private readonly _layoutContext: LayoutContext) {
 
         this._itemOver = this._itemOver.bind(this);
@@ -23,7 +23,7 @@ export class LayoutController {
     private _dropContext?: DropContext;
 
     activate(): void {
-        const rootId = this._layoutContext.itemToId(this._layoutRoot);
+        const rootId = this._layoutContext.itemToId(this._layout.root);
         if (!rootId) {
             throw new Error("TODO");
         }
@@ -41,13 +41,42 @@ export class LayoutController {
         document.addEventListener("mouseup", this._mouseUp);
     }
 
+    private _findItemElement(element: HTMLElement | null): HTMLElement | null {
+        while (element && (!element.id || !this._layoutContext.idToItem(element.id))) {
+            element = element.parentElement;
+        }
+        return element;
+    }
+
     private _itemOver(e: Event): void {
-        (e.target as HTMLElement).classList.add("hovered");
+        if (!e.target) {
+            return;
+        }
+
+        const itemElement = this._findItemElement(e.target as HTMLElement);
+
+        if (!itemElement) {
+            return;
+        }
+
+        itemElement.classList.add("hovered");
+
         e.preventDefault();
     }
 
     private _itemOut(e: Event): void {
-        (e.target as HTMLElement).classList.remove("hovered");
+        if (!e.target) {
+            return;
+        }
+
+        const itemElement = this._findItemElement(e.target as HTMLElement);
+
+        if (!itemElement) {
+            return;
+        }
+
+        itemElement.classList.remove("hovered");
+
         e.preventDefault();
     }
 
@@ -56,8 +85,16 @@ export class LayoutController {
             return;
         }
 
-        const innerElement = e.target as HTMLElement;
+        const innerElement = this._findItemElement(e.target as HTMLElement);
+        if (!innerElement) {
+            return;
+        }
+
         const innerId = innerElement.id;
+
+        if (headerId(innerId) !== (e.target as HTMLElement).id) {
+            return;
+        }
 
         const innerItem = this._layoutContext.idToItem(innerId);
         if (!innerItem) {
@@ -185,6 +222,12 @@ export class LayoutController {
             if (!dropElement) {
                 return null;
             }
+
+            dropElement = this._findItemElement(dropElement as HTMLElement);
+            if (!dropElement) {
+                return null;
+            }
+
             if(!this._layoutContext.idToItem(dropElement.id)) {
                 return null;
             }

@@ -15,3 +15,7 @@ export const placeElement = (measure: string) => (element: HTMLElement, rect: La
 
 export const placeElementPercent = placeElement("%");
 export const placeElementPixel = placeElement("px");
+
+export const sectionId = (sectionSuffix: string) => (itemId: string): string => `${itemId}_${sectionSuffix}`;
+export const headerId = sectionId("header");
+export const contentId = sectionId("content");

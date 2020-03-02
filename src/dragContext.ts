@@ -1,4 +1,4 @@
-import { LayoutItem, LayoutSide, LayoutGroup, LayoutLeaf, isLayoutLeaf, isLayoutGroup } from "./layout";
+import { LayoutItem, LayoutSide, LayoutGroup, isLayoutGroup } from "./layout";
 import { LayoutContext } from "./layoutContext";
 import { DropContext } from "./dropContext";
 import { LayoutItemRect } from "./layoutUtils";
@@ -42,15 +42,10 @@ export class DragContext {
     }
 
     endDrag(dropContext?: DropContext): void {
-        let dropLeaf =
-            dropContext && isLayoutLeaf(dropContext.dropItem) ?
-            dropContext.dropItem :
-            undefined;
-
         this._unstash();
         
-        if (dropLeaf) {
-            this._completeDrag(dropLeaf, dropContext!.dropEdge);
+        if (dropContext && dropContext.dropItem) {
+            this._completeDrag(dropContext.dropItem, dropContext.dropEdge);
         } else {
             this._cancelDrag();
         }
@@ -91,8 +86,8 @@ export class DragContext {
         this._stash.length = 0;
     }
 
-    private _completeDrag(dropLeaf: LayoutLeaf, dropEdge: LayoutSide): void {
-        dropLeaf.insertSide(this._outerItem, dropEdge);
+    private _completeDrag(dropItem: LayoutItem, dropEdge: LayoutSide): void {
+        dropItem.insertSide(this._outerItem, dropEdge);
     }
 
     private _cancelDrag(): void {

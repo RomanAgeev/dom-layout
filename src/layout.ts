@@ -12,16 +12,39 @@ export enum LayoutSide {
     Bottom
 }
 
-export class LayoutItem {
-    public parent?: LayoutGroup;
+const layoutChangedEvent = "LAYOUT_CHANGED";
+
+export type LayoutChangedEventHandler = (groupChanged: LayoutGroup, itemsRemoved: LayoutItem[]) => void;
+
+export class Layout {
+    constructor(rootDirection: LayoutDirection) {
+        this.root = new LayoutGroup(rootDirection, this);
+    }
+
+    readonly root: LayoutGroup
+
+    private readonly _events = new EventEmitter();
+
+    subscribeLayoutChanged(handler: LayoutChangedEventHandler): void {
+        this._events.addListener(layoutChangedEvent, handler);
+    }
+
+    unsubscribeLayoutChanged(hander: LayoutChangedEventHandler): void {
+        this._events.removeListener(layoutChangedEvent, hander);
+    }
+
+    raiseLayoutChanged(groupChanged: LayoutGroup, itemsRemoved: LayoutItem[]): void {
+        this._events.emit(layoutChangedEvent, groupChanged, itemsRemoved);
+    }
 }
 
-export class LayoutLeaf extends LayoutItem {
+export class LayoutItem {
     constructor(
-        readonly payload: unknown) {
-
-        super();
+        readonly layout: Layout) {
     }
+
+    parent?: LayoutGroup;
+    payload?: unknown;
 
     insertSide(item: LayoutItem, side: LayoutSide): void {
         if (this.parent) {
@@ -30,31 +53,19 @@ export class LayoutLeaf extends LayoutItem {
     }
 }
 
-const layoutChangedEvent = "Layout_CHANGED";
-
-export type LayoutChangedEventHandler = (groupChanged: LayoutGroup, itemsRemoved: LayoutItem[]) => void;
-
 export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, number]> {
     constructor(
-        readonly direction: LayoutDirection) {
+        readonly direction: LayoutDirection,
+        layout: Layout) {
             
-        super();
+        super(layout);
     }
 
     private readonly _items: LayoutItem[] = [];
     private readonly _weights = new Map<LayoutItem, number>();
-    private readonly _events = new EventEmitter();
 
     get count(): number {
         return this._items.length;
-    }
-
-    subscribeLayoutChanged(handler: LayoutChangedEventHandler): void {
-        this._events.addListener(layoutChangedEvent, handler);
-    }
-
-    unsubscribeLayoutChanged(hander: LayoutChangedEventHandler): void {
-        this._events.removeListener(layoutChangedEvent, hander);
     }
 
     item(index: number): LayoutItem {
@@ -80,23 +91,24 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         return this._weights.get(item)!;
     }
     
-    addLeaf(payload: unknown, weight: number = 1): LayoutLeaf {
-        const leaf = new LayoutLeaf(payload);
+    addLeaf(payload: unknown, weight: number = 1): LayoutItem {
+        const leaf = new LayoutItem(this.layout);
+        leaf.payload = payload;
         this._insertIndex(this.count, leaf, weight);
-        this._raiseGroupChanged(this, []);
+        this._raiseLayoutChanged(this);
         return leaf;
     }
 
     addGroup(direction: LayoutDirection, weight: number = 1): LayoutGroup {
-        const group = new LayoutGroup(direction);
+        const group = new LayoutGroup(direction, this.layout);
         this._insertIndex(this.count, group, weight);
-        this._raiseGroupChanged(this, []);
+        this._raiseLayoutChanged(this);
         return group;
     }
 
     insertItem(item: LayoutItem, index: number, weight: number): void {
         this._insertIndex(index, item, weight);
-        this._raiseGroupChanged(this, []);
+        this._raiseLayoutChanged(this);
     }
 
     insertNearChild(child: LayoutItem, item: LayoutItem, side: LayoutSide): void {
@@ -122,7 +134,7 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
                 LayoutDirection.Vertical :
                 LayoutDirection.Horizontal;
 
-            const group = new LayoutGroup(oppositeDirection);
+            const group = new LayoutGroup(oppositeDirection, this.layout);
 
             this._removeIndex(index);
             this._insertIndex(index, group, weight);
@@ -136,7 +148,7 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
             }
         }
 
-        this._raiseGroupChanged(this, []);
+        this._raiseLayoutChanged(this);
     }
 
     removeItem(item: LayoutItem): void {
@@ -145,7 +157,7 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
             throw new Error("item doesn't exist");
         }
         this._removeIndex(index);
-        this._raiseGroupChanged(this, [item]);
+        this._raiseLayoutChanged(this, [item]);
     }
 
     private _insertIndex(index: number, item: LayoutItem, weight: number): void {
@@ -161,19 +173,15 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
         item.parent = undefined
     }
 
-    private _raiseGroupChanged(groupChanged: LayoutGroup, itemsRemoved: LayoutItem[]): void {
-        this._events.emit(layoutChangedEvent, groupChanged, itemsRemoved);
-
-        if (this.parent) {
-            this.parent._raiseGroupChanged(groupChanged, itemsRemoved);
-        }
+    private _raiseLayoutChanged(groupChanged: LayoutGroup, itemsRemoved: LayoutItem[] = []): void {
+        this.layout.raiseLayoutChanged(groupChanged, itemsRemoved);
     }
 
     [Symbol.iterator](): Iterator<[LayoutItem, number]> {
         const count = this.count;
         const items = this._items;
         const weights = this._weights;
-        const empty = new LayoutItem();
+        const empty = new LayoutItem(this.layout);
 
         let index = 0;
 
@@ -192,7 +200,6 @@ export class LayoutGroup extends LayoutItem implements Iterable<[LayoutItem, num
     }
 }
 
-export const isLayoutLeaf = (item: LayoutItem): item is LayoutLeaf => item instanceof LayoutLeaf;
 export const isLayoutGroup = (item: LayoutItem): item is LayoutGroup => item instanceof LayoutGroup;
 
 const isItemPrepend = (side: LayoutSide, direction: LayoutDirection): boolean => 

@@ -1,18 +1,16 @@
-import { LayoutDirection, LayoutGroup } from "./layout";
-import { LayoutRenderer } from "./layoutRenderer";
+import { LayoutDirection, Layout } from "./layout";
+import { LayoutRenderer, ItemRender } from "./layoutRenderer";
 import { ready } from "./domUtils";
-import { LayoutContext } from "./layoutContext";
 
 ready(() => {
     const container = document.getElementById("container")!;
     const container2 = document.getElementById("container2")!;
 
+    const layout = new Layout(LayoutDirection.Horizontal);
 
-    const root = new LayoutGroup(LayoutDirection.Horizontal);
-
-    root.addLeaf("lightgreen");
-    const group2 = root.addGroup(LayoutDirection.Vertical, 2);
-    const group3 = root.addGroup(LayoutDirection.Vertical, 3);
+    layout.root.addLeaf("lightgreen");
+    const group2 = layout.root.addGroup(LayoutDirection.Vertical, 2);
+    const group3 = layout.root.addGroup(LayoutDirection.Vertical, 3);
 
     group2.addLeaf("red", 2);
     const group22 = group2.addGroup(LayoutDirection.Horizontal);
@@ -27,6 +25,20 @@ ready(() => {
     group3.addLeaf("blue");
     group3.addLeaf("lightblue");
 
-    new LayoutRenderer(root, "ra-layout-large").render(container);
-    new LayoutRenderer(root, "ra-layout-small").render(container2);
+    const itemRender: ItemRender = (payload: unknown, container: HTMLElement): void => {
+        const element = document.createElement("div");
+        // element.style.background = payload as string;
+        element.style.width = "100%";
+        element.style.height = "100%";
+        // container.style.padding = "30px";
+        container.style.overflow = "hidden";
+        element.style.overflow = "hidden";
+        element.style.textOverflow = "hidden";
+        element.textContent = payload as string;
+        element.style.textAlign = "center";
+        container.append(element);
+    };
+
+    new LayoutRenderer(layout, itemRender, "ra-layout-large").render(container);
+    new LayoutRenderer(layout, itemRender, "ra-layout-small").render(container2);
 });

@@ -1,19 +1,22 @@
-import { LayoutItem, isLayoutLeaf, isLayoutGroup, LayoutGroup, LayoutDirection, LayoutLeaf } from "./layout";
+import { Layout, LayoutItem, isLayoutGroup, LayoutGroup, LayoutDirection } from "./layout";
 import { identity, constant } from "./utils";
 import { LayoutController } from "./layoutController";
 import { LayoutArranger } from "./layoutArranger";
-import { placeElementPercent } from "./layoutUtils";
+import { placeElementPercent, headerId, contentId } from "./layoutUtils";
 import { LayoutContext } from "./layoutContext";
+
+export type ItemRender = (payload: unknown, container: HTMLElement) => void;
 
 export class LayoutRenderer {
     constructor(
-        private readonly _layoutRoot: LayoutGroup,
+        private readonly _layout: Layout,
+        private readonly _itemRender: ItemRender,
         idPrefix: string) {
 
         this._layoutContext = new LayoutContext(idPrefix);
-        this._layoutController = new LayoutController(this._layoutRoot, this._layoutContext);
+        this._layoutController = new LayoutController(this._layout, this._layoutContext);
         this._layoutChanged = this._layoutChanged.bind(this);
-        this._layoutRoot.subscribeLayoutChanged(this._layoutChanged);
+        this._layout.subscribeLayoutChanged(this._layoutChanged);
     }
     
     private readonly _horizontalArranger = new LayoutArranger(identity, constant(0), identity, constant(100));
@@ -22,11 +25,11 @@ export class LayoutRenderer {
     private readonly _layoutController: LayoutController;
     
     render(container: HTMLElement): void {
-        const rootElement = this._createElement(this._layoutRoot);
+        const rootElement = this._createElement(this._layout.root);
         placeElementPercent(rootElement, { left: 0, top: 0, width: 100, height: 100 });
         container.append(rootElement);
 
-        this._renderGroup(this._layoutRoot);
+        this._renderGroup(this._layout.root);
 
         this._layoutController.activate();
     }
@@ -56,11 +59,6 @@ export class LayoutRenderer {
         }
     }
 
-    private _renderLeaf(leaf: LayoutLeaf): void {
-        const leafElement = this._extractElement(leaf);
-        leafElement.style.background = leaf.payload as string;
-    }
-
     private _renderGroup(group: LayoutGroup): void {
         const groupElement = this._extractElement(group);
 
@@ -78,12 +76,31 @@ export class LayoutRenderer {
 
             if (isLayoutGroup(item)) {
                 this._renderGroup(item);
-            }
 
-            if (isLayoutLeaf(item) && !itemId) {
-                this._renderLeaf(item);
+            } else if (!itemId) {
+                this._renderItem(item);
             }
         }
+    }
+
+    private _renderItem(item: LayoutItem): void {
+        const contanerElement = this._extractElement(item);
+
+        const itemId: string = contanerElement.id;
+
+        const headerElement = document.createElement("div");
+        headerElement.id = headerId(itemId);
+        headerElement.classList.add("item", "item-header");
+        headerElement.style.background = item.payload as string;
+
+        const contentElement = document.createElement("div");
+        contentElement.id = contentId(itemId);
+        contentElement.classList.add("item", "item-content");
+
+        contanerElement.append(headerElement, contentElement);
+        contanerElement.style.border = `2px solid ${item.payload}`;
+
+        this._itemRender(item.payload, contentElement);
     }
 
     private _extractElement(item: LayoutItem): HTMLElement {
@@ -103,6 +120,7 @@ export class LayoutRenderer {
     private _createElement(item: LayoutItem): HTMLElement {
         const element = document.createElement("div");
         element.id = this._layoutContext.registerItem(item);
+        element.classList.add("item");
         return element;
     }
 
